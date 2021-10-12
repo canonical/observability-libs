@@ -3,7 +3,7 @@
 
 import unittest
 from unittest import mock
-from unittest.mock import mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
@@ -124,6 +124,7 @@ class TestK8sServicePatch(unittest.TestCase):
 
     @patch(f"{MOD_PATH}.Client.patch")
     @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch("lightkube.core.client.GenericSyncClient", Mock)
     def test_patch_k8s_service(self, client_patch):
         charm = self.harness.charm
         self.harness.set_leader(False)
@@ -153,6 +154,7 @@ class TestK8sServicePatch(unittest.TestCase):
 
     @patch(f"{MOD_PATH}.Client.get")
     @patch(f"{CL_PATH}._namespace", "test")
+    @patch("lightkube.core.client.GenericSyncClient", Mock)
     def test_is_patched(self, get_patch):
         charm = self.harness.charm
         get_patch.return_value = Service(

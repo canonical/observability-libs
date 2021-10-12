@@ -20,6 +20,6 @@ Where this charm should be used, is to access one of the following libraries dur
 Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this
 charm following best practice guidelines, and `CONTRIBUTING.md` for developer guidance.
 
-[KubernetesServicePatch][https://charmhub.io/observability-libs/libraries/kubernetes_service_patch]
-[bundle][https://charmhub.io/lma-light]
-[charm libraries][https://juju.is/docs/sdk/libraries]
+[kubernetesservicepatch]: https://charmhub.io/observability-libs/libraries/kubernetes_service_patch
+[bundle]: https://charmhub.io/lma-light
+[charm libraries]: https://juju.is/docs/sdk/libraries
