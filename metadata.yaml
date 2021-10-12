@@ -1,0 +1,15 @@
+# Copyright 2021 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: observability-libs
+description: |
+  A placeholder charm that contains helpful charm libraries curated by the
+  Canonical Observability charm team.
+summary: Collection of Charm Libraries for the Observability charms.
+containers:
+  placeholder:
+    resource: placeholder-image
+
+resources:
+  placeholder-image:
+    type: oci-image
+    description: OCI image for placeholder
