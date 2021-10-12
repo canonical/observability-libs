@@ -1,34 +1,44 @@
-# observability-libs
+# Contributing to observability-libs
+
+## Bugs and pull requests
+
+- Generally, before developing enhancements to this charm, you should consider explaining your use
+  case.
+- If you would like to chat with us about your use-cases or proposed implementation, you can reach
+  us at [Canonical Mattermost public channel](https://chat.charmhub.io/charmhub/channels/charm-dev)
+  or [Discourse](https://discourse.charmhub.io/).
+- All enhancements require review before being merged. Apart from code quality and test coverage,
+  the review will also take into account the resulting user experience for Juju administrators
+  using this charm.
+
+## Setup
+
+A typical setup using [snaps](https://snapcraft.io/) can be found in the [Juju
+docs](https://juju.is/docs/sdk/dev-setup).
 
 ## Developing
 
-Create and activate a virtualenv with the development requirements:
+You can use the environments created by `tox` for development:
 
-    virtualenv -p python3 venv
-    source venv/bin/activate
-    pip install -r requirements-dev.txt
+```shell
+tox --notest -e unit
+source .tox/unit/bin/activate
+```
 
-## Code overview
+### Testing
 
-TEMPLATE-TODO: 
-One of the most important things a consumer of your charm (or library)
-needs to know is what set of functionality it provides. Which categories
-does it fit into? Which events do you listen to? Which libraries do you
-consume? Which ones do you export and how are they used?
+```shell
+tox -e fmt       # update your code according to linting rules
+tox -e lint      # code style
+tox -e static    # static analysis
+tox -e unit      # unit tests
+tox              # runs 'lint', 'static' and 'unit' environments
+```
 
-## Intended use case
+## Build charm
 
-TEMPLATE-TODO:
-Why were these decisions made? What's the scope of your charm?
+Build the charm in this git repository using:
 
-## Roadmap
-
-If this Charm doesn't fulfill all of the initial functionality you were
-hoping for or planning on, please add a Roadmap or TODO here
-
-## Testing
-
-The Python operator framework includes a very nice harness for testing
-operator behaviour without full deployment. Just `run_tests`:
-
-    ./run_tests
+```shell
+charmcraft pack
+```
