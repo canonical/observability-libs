@@ -26,12 +26,12 @@ a port for the service, where each tuple contains:
 ## Getting Started
 
 To get started using the library, you just need to fetch the library using `charmcraft`. **Note
-that you also need to add `lightkube` to your charm's `requirements.txt`.**
+that you also need to add `lightkube` and `lightkube-models` to your charm's `requirements.txt`.**
 
 ```shell
 cd some-charm
 charmcraft fetch-lib charms.observability_libs.v0.kubernetes_service_patch
-echo "lightkube" >> requirements.txt
+echo "\nlightkube\nlightkube-models" >> requirements.txt
 ```
 
 Then, to initialise the library:
