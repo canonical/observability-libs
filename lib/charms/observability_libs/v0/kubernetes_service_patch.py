@@ -23,16 +23,40 @@ a port for the service, where each tuple contains:
 - port for the service to listen on
 - optionally: a targetPort for the service (the port in the container!)
 
-A typical example of including this library might be:
+## Getting Started
+
+To get started using the library, you just need to fetch the library using `charmcraft`. **Note
+that you also need to add `lightkube` to your charm's `requirements.txt`.**
+
+```shell
+cd some-charm
+charmcraft fetch-lib charms.observability_libs.v0.kubernetes_service_patch
+echo "lightkube" >> requirements.txt
+```
+
+Then, to initialise the library:
 
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
 
-class SomeApplication(CharmBase):
+class SomeCharm(CharmBase):
   def __init__(self, *args):
     # ...
     self.service_patcher = KubernetesServicePatch(self, [(f"{self.app.name}", 8080)])
+    # ...
+```
+
+Additionally, you may wish to use mocks in your charm's unit testing to ensure that the library
+does not try to make any API calls, or open any files during testing that are unlikely to be
+present, and could break your tests. The easiest way to do this is during your test `setUp`:
+
+```python
+# ...
+
+@patch("charm.KubernetesServicePatch", lambda x, y: None)
+def setUp(self, *unused):
+    self.harness = Harness(SomeCharm)
     # ...
 ```
 """
@@ -58,7 +82,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class KubernetesServicePatch(Object):
@@ -68,7 +92,7 @@ class KubernetesServicePatch(Object):
         """Constructor for KubernetesServicePatch.
 
         Args:
-            charm: the charm that is instantiating the library
+            charm: the charm that is instantiating the library.
             ports: a list of tuples (name, port, targetPort) for every service port.
         """
         super().__init__(charm, "kubernetes-service-patch")
@@ -80,11 +104,14 @@ class KubernetesServicePatch(Object):
         self.framework.observe(charm.on.upgrade_charm, self._patch)
 
     def _service_object(self, ports: List[Tuple[str, int, Optional[int]]]) -> Service:
-        """Returns a valid Service representation for Alertmanager.
+        """Creates a valid Service representation for Alertmanager.
 
         Args:
             ports: a list of tuples of the form (name, port) or (name, port, targetPort) for every
-            service port. If the 'targetPort' is omitted, it is assumed to be equal to 'port'
+                service port. If the 'targetPort' is omitted, it is assumed to be equal to 'port'.
+
+        Returns:
+            Service: A valid representation of a Kubernetes Service with the correct ports.
         """
         return Service(
             apiVersion="v1",
@@ -107,7 +134,7 @@ class KubernetesServicePatch(Object):
         """Patch the Kubernetes service created by Juju to map the correct port.
 
         Raises:
-            PatchFailed: if patching fails.
+            PatchFailed: if patching fails due to lack of permissions, or otherwise.
         """
         if not self.charm.unit.is_leader():
             return
@@ -124,7 +151,11 @@ class KubernetesServicePatch(Object):
             logger.info("Kubernetes service '%s' patched successfully", self._app)
 
     def is_patched(self) -> bool:
-        """Returns a bool indicating if the service patch has been applied."""
+        """Reports if the service patch has been applied.
+
+        Returns:
+            bool: A boolean indicating if the service patch has been applied.
+        """
         client = Client()
         # Get the relevant service from the cluster
         service = client.get(Service, name=self._app, namespace=self._namespace)
@@ -136,11 +167,19 @@ class KubernetesServicePatch(Object):
 
     @property
     def _app(self) -> str:
-        """Returns a string containing the name of the current Juju application."""
+        """Name of the current Juju application.
+
+        Returns:
+            str: A string containing the name of the current Juju application.
+        """
         return self.charm.app.name
 
     @property
     def _namespace(self) -> str:
-        """Returns a string containing the Kubernetes namespace we're running in."""
+        """The Kubernetes namespace we're running in.
+
+        Returns:
+            str: A string containing the name of the current Kubernetes namespace.
+        """
         with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r") as f:
             return f.read().strip()
