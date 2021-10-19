@@ -65,7 +65,8 @@ def setUp(self, *unused):
 """
 
 import logging
-from typing import List, Optional, Tuple
+from types import MethodType
+from typing import Sequence, Tuple, Union
 
 from lightkube import ApiError, Client
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
@@ -87,11 +88,13 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 2
 
+PortDefinition = Union[Tuple[str, int], Tuple[str, int, int]]
+
 
 class KubernetesServicePatch(Object):
     """A utility for patching the Kubernetes service set up by Juju."""
 
-    def __init__(self, charm: CharmBase, ports: List[Tuple[str, int, Optional[int]]]):
+    def __init__(self, charm: CharmBase, ports: Sequence[PortDefinition]):
         """Constructor for KubernetesServicePatch.
 
         Args:
@@ -102,11 +105,13 @@ class KubernetesServicePatch(Object):
         self.charm = charm
         self.service = self._service_object(ports)
 
+        # Make mypy type checking happy that self._patch is a method
+        assert isinstance(self._patch, MethodType)
         # Ensure this patch is applied during the 'install' and 'upgrade-charm' events
         self.framework.observe(charm.on.install, self._patch)
         self.framework.observe(charm.on.upgrade_charm, self._patch)
 
-    def _service_object(self, ports: List[Tuple[str, int, Optional[int]]]) -> Service:
+    def _service_object(self, ports: Sequence[PortDefinition]) -> Service:
         """Creates a valid Service representation for Alertmanager.
 
         Args:
