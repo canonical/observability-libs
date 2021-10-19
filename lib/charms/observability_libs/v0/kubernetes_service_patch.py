@@ -132,7 +132,7 @@ class KubernetesServicePatch(Object):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": self._app},
                 ports=[
-                    ServicePort(name=p[0], port=p[1], targetPort=p[2] if len(p) > 2 else p[1])
+                    ServicePort(name=p[0], port=p[1], targetPort=p[2] if len(p) > 2 else p[1])  # type: ignore
                     for p in ports
                 ],
             ),
