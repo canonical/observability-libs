@@ -39,16 +39,29 @@ class _TestCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self.service_patch = KubernetesServicePatch(
-            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)]
+            self,
+            [("svc1", 1234, 1234), ("svc2", 1235, 1235)],
+        )
+
+
+class _TestCharmLBService(CharmBase):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.lb_service_patch = KubernetesServicePatch(
+            self,
+            [("test_lb_service", 4321, 4321, 7654), ("test_lb_service2", 1029, 1029, 3847)],
+            "LoadBalancer",
         )
 
 
 class TestK8sServicePatch(unittest.TestCase):
     def setUp(self) -> None:
         self.harness = Harness(_TestCharm, meta="name: test-charm")
+        self.lb_harness = Harness(_TestCharmLBService, meta="name: lb-test-charm")
         # Mock out calls to KubernetesServicePatch._namespace
         with mock.patch(f"{CL_PATH}._namespace", "test"):
             self.harness.begin()
+            self.lb_harness.begin()
 
     @patch(f"{CL_PATH}._namespace", "test")
     def test_k8s_service(self):
@@ -69,6 +82,34 @@ class TestK8sServicePatch(unittest.TestCase):
                     ServicePort(name="svc1", port=1234, targetPort=1234),
                     ServicePort(name="svc2", port=1235, targetPort=1235),
                 ],
+                type="ClusterIP",
+            ),
+        )
+
+        self.assertEqual(service_patch.service, expected_service)
+
+    @patch(f"{CL_PATH}._namespace", "test")
+    def test_k8s_load_balancer_service(self):
+        service_patch = self.lb_harness.charm.lb_service_patch
+        self.assertEqual(service_patch.charm, self.lb_harness.charm)
+
+        expected_service = Service(
+            apiVersion="v1",
+            kind="Service",
+            metadata=ObjectMeta(
+                namespace="test",
+                name="lb-test-charm",
+                labels={"app.kubernetes.io/name": "lb-test-charm"},
+            ),
+            spec=ServiceSpec(
+                selector={"app.kubernetes.io/name": "lb-test-charm"},
+                ports=[
+                    ServicePort(name="test_lb_service", port=4321, targetPort=4321, nodePort=7654),
+                    ServicePort(
+                        name="test_lb_service2", port=1029, targetPort=1029, nodePort=3847
+                    ),
+                ],
+                type="LoadBalancer",
             ),
         )
 
@@ -91,6 +132,7 @@ class TestK8sServicePatch(unittest.TestCase):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[ServicePort(name="test-app", port=8080, targetPort=8080)],
+                type="ClusterIP",
             ),
         )
         self.assertEqual(actual, expected)
@@ -108,6 +150,7 @@ class TestK8sServicePatch(unittest.TestCase):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[ServicePort(name="test-app", port=8080, targetPort=9090)],
+                type="ClusterIP",
             ),
         )
         self.assertEqual(actual, expected)
@@ -168,6 +211,7 @@ class TestK8sServicePatch(unittest.TestCase):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[ServicePort(name="placeholder", port=65535)],
+                type="ClusterIP",
             ),
         )
 
@@ -187,6 +231,7 @@ class TestK8sServicePatch(unittest.TestCase):
                     ServicePort(name="svc1", port=1234, targetPort=1234),
                     ServicePort(name="svc2", port=1235, targetPort=1235),
                 ],
+                type="ClusterIP",
             ),
         )
 
