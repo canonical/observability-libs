@@ -82,7 +82,7 @@ def setUp(self, *unused):
 
 import logging
 from types import MethodType
-from typing import Sequence, Tuple, Union, Literal
+from typing import Literal, Sequence, Tuple, Union
 
 from lightkube import ApiError, Client
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
