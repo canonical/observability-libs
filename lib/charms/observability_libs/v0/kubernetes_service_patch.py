@@ -40,6 +40,7 @@ EOF
 
 Then, to initialise the library:
 
+For ClusterIP services:
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
@@ -48,6 +49,20 @@ class SomeCharm(CharmBase):
   def __init__(self, *args):
     # ...
     self.service_patcher = KubernetesServicePatch(self, [(f"{self.app.name}", 8080)])
+    # ...
+```
+
+For LoadBalancer/NodePort services:
+```python
+# ...
+from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+
+class SomeCharm(CharmBase):
+  def __init__(self, *args):
+    # ...
+    self.service_patcher = KubernetesServicePatch(
+        self, [(f"{self.app.name}", 443, 443, 30666)], "LoadBalancer"
+    )
     # ...
 ```
 
@@ -67,7 +82,7 @@ def setUp(self, *unused):
 
 import logging
 from types import MethodType
-from typing import Sequence, Tuple, Union
+from typing import Sequence, Tuple, Union, Literal
 
 from lightkube import ApiError, Client
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
@@ -90,6 +105,7 @@ LIBAPI = 0
 LIBPATCH = 3
 
 PortDefinition = Union[Tuple[str, int], Tuple[str, int, int], Tuple[str, int, int, int]]
+ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
 
 class KubernetesServicePatch(Object):
@@ -99,7 +115,7 @@ class KubernetesServicePatch(Object):
         self,
         charm: CharmBase,
         ports: Sequence[PortDefinition],
-        service_type: ServiceSpec.type = ServiceSpec.type,
+        service_type: ServiceType = "ClusterIP",
     ):
         """Constructor for KubernetesServicePatch.
 
@@ -120,7 +136,7 @@ class KubernetesServicePatch(Object):
         self.framework.observe(charm.on.upgrade_charm, self._patch)
 
     def _service_object(
-        self, ports: Sequence[PortDefinition], service_type=ServiceSpec.type
+        self, ports: Sequence[PortDefinition], service_type: ServiceType = "ClusterIP"
     ) -> Service:
         """Creates a valid Service representation for Alertmanager.
 

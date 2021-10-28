@@ -82,6 +82,7 @@ class TestK8sServicePatch(unittest.TestCase):
                     ServicePort(name="svc1", port=1234, targetPort=1234),
                     ServicePort(name="svc2", port=1235, targetPort=1235),
                 ],
+                type="ClusterIP",
             ),
         )
 
@@ -131,6 +132,7 @@ class TestK8sServicePatch(unittest.TestCase):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[ServicePort(name="test-app", port=8080, targetPort=8080)],
+                type="ClusterIP",
             ),
         )
         self.assertEqual(actual, expected)
@@ -148,6 +150,7 @@ class TestK8sServicePatch(unittest.TestCase):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[ServicePort(name="test-app", port=8080, targetPort=9090)],
+                type="ClusterIP",
             ),
         )
         self.assertEqual(actual, expected)
@@ -208,6 +211,7 @@ class TestK8sServicePatch(unittest.TestCase):
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[ServicePort(name="placeholder", port=65535)],
+                type="ClusterIP",
             ),
         )
 
@@ -227,6 +231,7 @@ class TestK8sServicePatch(unittest.TestCase):
                     ServicePort(name="svc1", port=1234, targetPort=1234),
                     ServicePort(name="svc2", port=1235, targetPort=1235),
                 ],
+                type="ClusterIP",
             ),
         )
 
