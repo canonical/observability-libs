@@ -51,6 +51,22 @@ class _TestCharmCustomServiceName(CharmBase):
         )
 
 
+class _TestCharmAdditionalLabels(CharmBase):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.additional_labels_service_patch = KubernetesServicePatch(
+            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)], additional_labels={"a": "b"}
+        )
+
+
+class _TestCharmAdditionalSelectors(CharmBase):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.additional_selectors_service_patch = KubernetesServicePatch(
+            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)], additional_selectors={"a": "b"}
+        )
+
+
 class _TestCharmLBService(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
@@ -78,6 +94,12 @@ class TestK8sServicePatch(unittest.TestCase):
         self.custom_service_name_harness = Harness(
             _TestCharmCustomServiceName, meta="name: test-charm"
         )
+        self.additional_labels_harness = Harness(
+            _TestCharmAdditionalLabels, meta="name: test-charm"
+        )
+        self.additional_selectors_harness = Harness(
+            _TestCharmAdditionalSelectors, meta="name: test-charm"
+        )
         self.lb_harness = Harness(_TestCharmLBService, meta="name: lb-test-charm")
         self.custom_lb_service_name_harness = Harness(
             _TestCharmCustomLBServiceName, meta="name: test-charm"
@@ -86,6 +108,8 @@ class TestK8sServicePatch(unittest.TestCase):
         with mock.patch(f"{CL_PATH}._namespace", "test"):
             self.harness.begin()
             self.custom_service_name_harness.begin()
+            self.additional_labels_harness.begin()
+            self.additional_selectors_harness.begin()
             self.lb_harness.begin()
             self.custom_lb_service_name_harness.begin()
 
@@ -129,6 +153,56 @@ class TestK8sServicePatch(unittest.TestCase):
             ),
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "custom-service-name"},
+                ports=[
+                    ServicePort(name="svc1", port=1234, targetPort=1234),
+                    ServicePort(name="svc2", port=1235, targetPort=1235),
+                ],
+                type="ClusterIP",
+            ),
+        )
+
+        self.assertEqual(service_patch.service, expected_service)
+
+    @patch(f"{CL_PATH}._namespace", "test")
+    def test_k8s_service_with_additional_labels(self):
+        service_patch = self.additional_labels_harness.charm.additional_labels_service_patch
+        self.assertEqual(service_patch.charm, self.additional_labels_harness.charm)
+
+        expected_service = Service(
+            apiVersion="v1",
+            kind="Service",
+            metadata=ObjectMeta(
+                namespace="test",
+                name="test-charm",
+                labels={"app.kubernetes.io/name": "test-charm", "a": "b"},
+            ),
+            spec=ServiceSpec(
+                selector={"app.kubernetes.io/name": "test-charm"},
+                ports=[
+                    ServicePort(name="svc1", port=1234, targetPort=1234),
+                    ServicePort(name="svc2", port=1235, targetPort=1235),
+                ],
+                type="ClusterIP",
+            ),
+        )
+
+        self.assertEqual(service_patch.service, expected_service)
+
+    @patch(f"{CL_PATH}._namespace", "test")
+    def test_k8s_service_with_additional_selectors(self):
+        service_patch = self.additional_selectors_harness.charm.additional_selectors_service_patch
+        self.assertEqual(service_patch.charm, self.additional_selectors_harness.charm)
+
+        expected_service = Service(
+            apiVersion="v1",
+            kind="Service",
+            metadata=ObjectMeta(
+                namespace="test",
+                name="test-charm",
+                labels={"app.kubernetes.io/name": "test-charm"},
+            ),
+            spec=ServiceSpec(
+                selector={"app.kubernetes.io/name": "test-charm", "a": "b"},
                 ports=[
                     ServicePort(name="svc1", port=1234, targetPort=1234),
                     ServicePort(name="svc2", port=1235, targetPort=1235),
