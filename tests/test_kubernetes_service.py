@@ -309,15 +309,23 @@ class TestK8sServicePatch(unittest.TestCase):
         )
         self.assertEqual(actual, expected)
 
-    def test_event_listener_attach(self):
+    def test_given_initialized_charm_when_install_event_then_event_listener_is_attached(self):
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
-            # Emit the install event, patch should be called
             charm.on.install.emit()
             self.assertEqual(patch.call_count, 1)
-            # The patch should also be applied during upgrade_charm
+
+    def test_given_initialized_charm_when_upgrade_event_then_event_listener_is_attached(self):
+        charm = self.harness.charm
+        with mock.patch(f"{CL_PATH}._patch") as patch:
             charm.on.upgrade_charm.emit()
-            self.assertEqual(patch.call_count, 2)
+            self.assertEqual(patch.call_count, 1)
+
+    def test_given_initialized_charm_when_remove_event_then_event_listener_is_attached(self):
+        charm = self.harness.charm
+        with mock.patch(f"{CL_PATH}._on_remove") as patch:
+            charm.on.remove.emit()
+            self.assertEqual(patch.call_count, 1)
 
     @patch(f"{MOD_PATH}.Client.patch")
     @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
