@@ -231,8 +231,8 @@ class KubernetesServicePatch(Object):
 
     def _delete_and_create_service(self, client: Client):
         service = client.get(Service, self._app, namespace=self._namespace)
-        service.metadata.name = self.service_name
-        service.metadata.resourceVersion = service.metadata.uid = None
+        service.metadata.name = self.service_name  # type: ignore[attr-defined]
+        service.metadata.resourceVersion = service.metadata.uid = None  # type: ignore[attr-defined]   # noqa: E501
         client.delete(Service, self._app, namespace=self._namespace)
         client.create(service)
 
