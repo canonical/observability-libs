@@ -149,10 +149,10 @@ class TestK8sServicePatch(unittest.TestCase):
             metadata=ObjectMeta(
                 namespace="test",
                 name="custom-service-name",
-                labels={"app.kubernetes.io/name": "custom-service-name"},
+                labels={"app.kubernetes.io/name": "test-charm"},
             ),
             spec=ServiceSpec(
-                selector={"app.kubernetes.io/name": "custom-service-name"},
+                selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[
                     ServicePort(name="svc1", port=1234, targetPort=1234),
                     ServicePort(name="svc2", port=1235, targetPort=1235),
@@ -253,10 +253,10 @@ class TestK8sServicePatch(unittest.TestCase):
             metadata=ObjectMeta(
                 namespace="test",
                 name="custom-lb-service-name",
-                labels={"app.kubernetes.io/name": "custom-lb-service-name"},
+                labels={"app.kubernetes.io/name": "test-charm"},
             ),
             spec=ServiceSpec(
-                selector={"app.kubernetes.io/name": "custom-lb-service-name"},
+                selector={"app.kubernetes.io/name": "test-charm"},
                 ports=[
                     ServicePort(name="test_lb_service", port=4321, targetPort=4321, nodePort=7654),
                     ServicePort(
@@ -266,7 +266,6 @@ class TestK8sServicePatch(unittest.TestCase):
                 type="LoadBalancer",
             ),
         )
-
         self.assertEqual(service_patch.service, expected_service)
 
     @patch(f"{CL_PATH}._namespace", "test")
@@ -319,12 +318,6 @@ class TestK8sServicePatch(unittest.TestCase):
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
             charm.on.upgrade_charm.emit()
-            self.assertEqual(patch.call_count, 1)
-
-    def test_given_initialized_charm_when_remove_event_then_event_listener_is_attached(self):
-        charm = self.harness.charm
-        with mock.patch(f"{CL_PATH}._on_remove") as patch:
-            charm.on.remove.emit()
             self.assertEqual(patch.call_count, 1)
 
     @patch(f"{MOD_PATH}.Client.patch")
