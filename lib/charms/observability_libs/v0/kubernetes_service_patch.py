@@ -120,6 +120,7 @@ class KubernetesServicePatch(Object):
         service_type: ServiceType = "ClusterIP",
         additional_labels: dict = None,
         additional_selectors: dict = None,
+        additional_annotations: dict = None,
     ):
         """Constructor for KubernetesServicePatch.
 
@@ -134,12 +135,18 @@ class KubernetesServicePatch(Object):
                 "app.kubernetes.io/name" is set to the service name)
             additional_selectors: Selectors to be added to the kubernetes service (by default only
                 "app.kubernetes.io/name" is set to the service name)
+            additional_annotations: Annotations to be added to the kubernetes service.
         """
         super().__init__(charm, "kubernetes-service-patch")
         self.charm = charm
         self.service_name = service_name if service_name else self._app
         self.service = self._service_object(
-            ports, service_name, service_type, additional_labels, additional_selectors
+            ports,
+            service_name,
+            service_type,
+            additional_labels,
+            additional_selectors,
+            additional_annotations,
         )
 
         # Make mypy type checking happy that self._patch is a method
@@ -147,7 +154,6 @@ class KubernetesServicePatch(Object):
         # Ensure this patch is applied during the 'install' and 'upgrade-charm' events
         self.framework.observe(charm.on.install, self._patch)
         self.framework.observe(charm.on.upgrade_charm, self._patch)
-        self.framework.observe(charm.on.remove, self._on_remove)
 
     def _service_object(
         self,
@@ -156,6 +162,7 @@ class KubernetesServicePatch(Object):
         service_type: ServiceType = "ClusterIP",
         additional_labels: dict = None,
         additional_selectors: dict = None,
+        additional_annotations: dict = None,
     ) -> Service:
         """Creates a valid Service representation.
 
@@ -172,16 +179,17 @@ class KubernetesServicePatch(Object):
                 "app.kubernetes.io/name" is set to the service name)
             additional_selectors: Selectors to be added to the kubernetes service (by default only
                 "app.kubernetes.io/name" is set to the service name)
+            additional_annotations: Annotations to be added to the kubernetes service.
 
         Returns:
             Service: A valid representation of a Kubernetes Service with the correct ports.
         """
         if not service_name:
             service_name = self._app
-        labels = {"app.kubernetes.io/name": service_name}
+        labels = {"app.kubernetes.io/name": self._app}
         if additional_labels:
             labels.update(additional_labels)
-        selector = {"app.kubernetes.io/name": service_name}
+        selector = {"app.kubernetes.io/name": self._app}
         if additional_selectors:
             selector.update(additional_selectors)
         return Service(
@@ -191,6 +199,7 @@ class KubernetesServicePatch(Object):
                 namespace=self._namespace,
                 name=service_name,
                 labels=labels,
+                annotations=additional_annotations,  # type: ignore[arg-type]
             ),
             spec=ServiceSpec(
                 selector=selector,
@@ -250,10 +259,6 @@ class KubernetesServicePatch(Object):
         # Construct a list in the same manner, using the fetched service
         fetched_ports = [(p.port, p.targetPort) for p in service.spec.ports]  # type: ignore[attr-defined]  # noqa: E501
         return expected_ports == fetched_ports
-
-    def _on_remove(self, event):
-        client = Client()
-        client.delete(Service, self.service_name, namespace=self._namespace)
 
     @property
     def _app(self) -> str:
