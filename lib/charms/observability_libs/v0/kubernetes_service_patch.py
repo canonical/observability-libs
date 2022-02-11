@@ -16,14 +16,12 @@ When initialised, this library binds a handler to the parent charm's `install` a
 events which applies the patch to the cluster. This should ensure that the service ports are
 correct throughout the charm's life.
 
-The constructor simply takes a reference to the parent charm, and a list of tuples that each define
-a port for the service, where each tuple contains:
+The constructor simply takes a reference to the parent charm, and a list of Lightkube ServicePorts
+that each define a port for the service. For information regarding the Lightkube ServicePort model,
+please visit https://gtsystem.github.io/lightkube-models/1.23/models/core_v1/#serviceport.
 
-- a name for the port
-- port for the service to listen on
-- optionally: a targetPort for the service (the port in the container!)
-- optionally: a nodePort for the service (for NodePort or LoadBalancer services only!)
-- optionally: a name of the service (in case service name needs to be patched as well)
+Optionally, a name of the service (in case service name needs to be patched as well), labels,
+selectors, and annotations can be provided as keyword arguments.
 
 ## Getting Started
 
@@ -45,11 +43,13 @@ For ClusterIP services:
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from lightkube.models.core_v1 import ServicePort
 
 class SomeCharm(CharmBase):
   def __init__(self, *args):
     # ...
-    self.service_patcher = KubernetesServicePatch(self, [(f"{self.app.name}", 8080)])
+    port = ServicePort(443, name=f"{self.app.name}")
+    self.service_patcher = KubernetesServicePatch(self, [port])
     # ...
 ```
 
@@ -57,13 +57,31 @@ For LoadBalancer/NodePort services:
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from lightkube.models.core_v1 import ServicePort
 
 class SomeCharm(CharmBase):
   def __init__(self, *args):
     # ...
+    port = ServicePort(443, name=f"{self.app.name}", targetPort=443, nodePort=30666)
     self.service_patcher = KubernetesServicePatch(
-        self, [(f"{self.app.name}", 443, 443, 30666)], "LoadBalancer"
+        self, [port], "LoadBalancer"
     )
+    # ...
+```
+
+Port protocols can also be specified. Valid protocols are "TCP", "UDP", and "SCTP"
+```python
+# ...
+from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from lightkube.models.core_v1 import ServicePort
+
+class SomeCharm(CharmBase):
+  def __init__(self, *args):
+    # ...
+    tcp = ServicePort(443, name=f"{self.app.name}-tcp", protocol="TCP)
+    udp = ServicePort(443, name=f"{self.app.name}-udp", protocol="UDP)
+    sctp = ServicePort(443, name=f"{self.app.name}-sctp", protocol="SCTP)
+    self.service_patcher = KubernetesServicePatch(self, [tcp, udp, sctp])
     # ...
 ```
 
@@ -83,7 +101,7 @@ def setUp(self, *unused):
 
 import logging
 from types import MethodType
-from typing import Literal, Sequence, Tuple, Union
+from typing import List, Literal
 
 from lightkube import ApiError, Client
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
@@ -105,7 +123,6 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 6
 
-PortDefinition = Union[Tuple[str, int], Tuple[str, int, int], Tuple[str, int, int, int]]
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
 
@@ -115,7 +132,7 @@ class KubernetesServicePatch(Object):
     def __init__(
         self,
         charm: CharmBase,
-        ports: Sequence[PortDefinition],
+        ports: List[ServicePort],
         service_name: str = None,
         service_type: ServiceType = "ClusterIP",
         additional_labels: dict = None,
@@ -126,7 +143,7 @@ class KubernetesServicePatch(Object):
 
         Args:
             charm: the charm that is instantiating the library.
-            ports: a list of tuples (name, port, targetPort, nodePort) for every service port.
+            ports: a list of ServicePorts
             service_name: allows setting custom name to the patched service. If none given,
                 application name will be used.
             service_type: desired type of K8s service. Default value is in line with ServiceSpec's
@@ -157,7 +174,7 @@ class KubernetesServicePatch(Object):
 
     def _service_object(
         self,
-        ports: Sequence[PortDefinition],
+        ports: List[ServicePort],
         service_name: str = None,
         service_type: ServiceType = "ClusterIP",
         additional_labels: dict = None,
@@ -167,10 +184,7 @@ class KubernetesServicePatch(Object):
         """Creates a valid Service representation.
 
         Args:
-            ports: a list of tuples of the form (name, port) or (name, port, targetPort)
-                or (name, port, targetPort, nodePort) for every service port. If the 'targetPort'
-                is omitted, it is assumed to be equal to 'port', with the exception of NodePort
-                and LoadBalancer services, where all port numbers have to be specified.
+            ports: a list of ServicePorts
             service_name: allows setting custom name to the patched service. If none given,
                 application name will be used.
             service_type: desired type of K8s service. Default value is in line with ServiceSpec's
@@ -203,15 +217,7 @@ class KubernetesServicePatch(Object):
             ),
             spec=ServiceSpec(
                 selector=selector,
-                ports=[
-                    ServicePort(
-                        name=p[0],
-                        port=p[1],
-                        targetPort=p[2] if len(p) > 2 else p[1],  # type: ignore[misc]
-                        nodePort=p[3] if len(p) > 3 else None,  # type: ignore[arg-type, misc]
-                    )
-                    for p in ports
-                ],
+                ports=ports,
                 type=service_type,
             ),
         )
