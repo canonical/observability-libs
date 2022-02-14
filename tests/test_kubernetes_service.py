@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 from unittest.mock import Mock, mock_open, patch
 
-from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
@@ -14,8 +14,8 @@ from lightkube.types import PatchType
 from ops.charm import CharmBase
 from ops.testing import Harness
 
-CL_PATH = "charms.observability_libs.v0.kubernetes_service_patch.KubernetesServicePatch"
-MOD_PATH = "charms.observability_libs.v0.kubernetes_service_patch"
+CL_PATH = "charms.observability_libs.v1.kubernetes_service_patch.KubernetesServicePatch"
+MOD_PATH = "charms.observability_libs.v1.kubernetes_service_patch"
 
 
 class _FakeResponse:

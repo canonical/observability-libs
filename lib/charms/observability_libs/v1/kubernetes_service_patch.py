@@ -9,16 +9,17 @@ service named after the application in the namespace (named after the Juju model
 default contains a "placeholder" port, which is 65536/TCP.
 
 When modifying the default set of resources managed by Juju, one must consider the lifecycle of the
-charm. In this case, any modifications to the default service (created during deployment), will
-be overwritten during a charm upgrade.
+charm. In this case, any modifications to the default service (created during deployment), will be
+overwritten during a charm upgrade.
 
 When initialised, this library binds a handler to the parent charm's `install` and `upgrade_charm`
 events which applies the patch to the cluster. This should ensure that the service ports are
 correct throughout the charm's life.
 
-The constructor simply takes a reference to the parent charm, and a list of Lightkube ServicePorts
-that each define a port for the service. For information regarding the Lightkube ServicePort model,
-please visit https://gtsystem.github.io/lightkube-models/1.23/models/core_v1/#serviceport.
+The constructor simply takes a reference to the parent charm, and a list of
+[`lightkube`](https://github.com/gtsystem/lightkube) ServicePorts that each define a port for the
+service. For information regarding the `lightkube` `ServicePort` model, please visit the
+`lightkube` [docs](https://gtsystem.github.io/lightkube-models/1.23/models/core_v1/#serviceport).
 
 Optionally, a name of the service (in case service name needs to be patched as well), labels,
 selectors, and annotations can be provided as keyword arguments.
@@ -39,7 +40,8 @@ EOF
 
 Then, to initialise the library:
 
-For ClusterIP services:
+For `ClusterIP` services:
+
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
@@ -53,7 +55,8 @@ class SomeCharm(CharmBase):
     # ...
 ```
 
-For LoadBalancer/NodePort services:
+For `LoadBalancer`/`NodePort` services:
+
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
@@ -69,7 +72,8 @@ class SomeCharm(CharmBase):
     # ...
 ```
 
-Port protocols can also be specified. Valid protocols are "TCP", "UDP", and "SCTP"
+Port protocols can also be specified. Valid protocols are `"TCP"`, `"UDP"`, and `"SCTP"`
+
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
@@ -117,11 +121,11 @@ logger = logging.getLogger(__name__)
 LIBID = "0042f86d0a874435adef581806cddbbb"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 0
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
