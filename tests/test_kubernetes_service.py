@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 from unittest.mock import Mock, mock_open, patch
 
-from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
@@ -14,8 +14,8 @@ from lightkube.types import PatchType
 from ops.charm import CharmBase
 from ops.testing import Harness
 
-CL_PATH = "charms.observability_libs.v0.kubernetes_service_patch.KubernetesServicePatch"
-MOD_PATH = "charms.observability_libs.v0.kubernetes_service_patch"
+CL_PATH = "charms.observability_libs.v1.kubernetes_service_patch.KubernetesServicePatch"
+MOD_PATH = "charms.observability_libs.v1.kubernetes_service_patch"
 
 
 class _FakeResponse:
@@ -38,41 +38,51 @@ class _FakeApiError(ApiError):
 class _TestCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
-        self.service_patch = KubernetesServicePatch(
-            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)]
-        )
+        svc1 = ServicePort(1234, name="svc1", targetPort=1234)
+        svc2 = ServicePort(1235, name="svc2", targetPort=1235)
+        self.service_patch = KubernetesServicePatch(self, [svc1, svc2])
 
 
 class _TestCharmCustomServiceName(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
+        svc1 = ServicePort(1234, name="svc1", targetPort=1234)
+        svc2 = ServicePort(1235, name="svc2", targetPort=1235)
         self.custom_service_name_service_patch = KubernetesServicePatch(
-            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)], service_name="custom-service-name"
+            self, [svc1, svc2], service_name="custom-service-name"
         )
 
 
 class _TestCharmAdditionalLabels(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
+        svc1 = ServicePort(1234, name="svc1", targetPort=1234)
+        svc2 = ServicePort(1235, name="svc2", targetPort=1235)
         self.additional_labels_service_patch = KubernetesServicePatch(
-            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)], additional_labels={"a": "b"}
+            self, [svc1, svc2], additional_labels={"a": "b"}
         )
 
 
 class _TestCharmAdditionalSelectors(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
+        svc1 = ServicePort(1234, name="svc1", targetPort=1234)
+        svc2 = ServicePort(1235, name="svc2", targetPort=1235)
         self.additional_selectors_service_patch = KubernetesServicePatch(
-            self, [("svc1", 1234, 1234), ("svc2", 1235, 1235)], additional_selectors={"a": "b"}
+            self, [svc1, svc2], additional_selectors={"a": "b"}
         )
 
 
 class _TestCharmLBService(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
+        test_lb_service = ServicePort(4321, name="test_lb_service", targetPort=4321, nodePort=7654)
+        test_lb_service2 = ServicePort(
+            1029, name="test_lb_service2", targetPort=1029, nodePort=3847
+        )
         self.lb_service_patch = KubernetesServicePatch(
             self,
-            [("test_lb_service", 4321, 4321, 7654), ("test_lb_service2", 1029, 1029, 3847)],
+            [test_lb_service, test_lb_service2],
             service_type="LoadBalancer",
         )
 
@@ -80,12 +90,25 @@ class _TestCharmLBService(CharmBase):
 class _TestCharmCustomLBServiceName(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
+        test_lb_service = ServicePort(4321, name="test_lb_service", targetPort=4321, nodePort=7654)
+        test_lb_service2 = ServicePort(
+            1029, name="test_lb_service2", targetPort=1029, nodePort=3847
+        )
         self.custom_lb_service_name_service_patch = KubernetesServicePatch(
             self,
-            [("test_lb_service", 4321, 4321, 7654), ("test_lb_service2", 1029, 1029, 3847)],
+            [test_lb_service, test_lb_service2],
             service_name="custom-lb-service-name",
             service_type="LoadBalancer",
         )
+
+
+class _TestCharmProtocols(CharmBase):
+    def __init__(self, *args):
+        super().__init__(*args)
+        svc1 = ServicePort(1234, name="svc1", protocol="TCP")
+        svc2 = ServicePort(1234, name="svc2", protocol="UDP")
+        svc3 = ServicePort(1234, name="svc3", protocol="SCTP")
+        self.protocols_service_patch = KubernetesServicePatch(self, [svc1, svc2, svc3])
 
 
 class TestK8sServicePatch(unittest.TestCase):
@@ -104,6 +127,7 @@ class TestK8sServicePatch(unittest.TestCase):
         self.custom_lb_service_name_harness = Harness(
             _TestCharmCustomLBServiceName, meta="name: test-charm"
         )
+        self.protocols_harness = Harness(_TestCharmProtocols, meta="name: test-charm")
         # Mock out calls to KubernetesServicePatch._namespace
         with mock.patch(f"{CL_PATH}._namespace", "test"):
             self.harness.begin()
@@ -112,6 +136,7 @@ class TestK8sServicePatch(unittest.TestCase):
             self.additional_selectors_harness.begin()
             self.lb_harness.begin()
             self.custom_lb_service_name_harness.begin()
+            self.protocols_harness.begin()
 
     @patch(f"{CL_PATH}._namespace", "test")
     def test_k8s_service(self):
@@ -272,7 +297,7 @@ class TestK8sServicePatch(unittest.TestCase):
     def test_optional_target_port_spec(self):
         service_patch = self.harness.charm.service_patch
 
-        ports = [("test-app", 8080)]
+        ports = [ServicePort(8080, name="test-app")]
         actual = service_patch._service_object(ports)
         expected = Service(
             apiVersion="v1",
@@ -284,13 +309,13 @@ class TestK8sServicePatch(unittest.TestCase):
             ),
             spec=ServiceSpec(
                 selector={"app.kubernetes.io/name": "test-charm"},
-                ports=[ServicePort(name="test-app", port=8080, targetPort=8080)],
+                ports=[ServicePort(name="test-app", port=8080)],
                 type="ClusterIP",
             ),
         )
         self.assertEqual(actual, expected)
 
-        ports = [("test-app", 8080, 9090)]
+        ports = [ServicePort(8080, name="test-app", targetPort=9090)]
         actual = service_patch._service_object(ports)
         expected = Service(
             apiVersion="v1",
@@ -307,6 +332,32 @@ class TestK8sServicePatch(unittest.TestCase):
             ),
         )
         self.assertEqual(actual, expected)
+
+    @patch(f"{CL_PATH}._namespace", "test")
+    def test_protocols(self):
+        service_patch = self.protocols_harness.charm.protocols_service_patch
+        self.assertEqual(service_patch.charm, self.protocols_harness.charm)
+
+        expected_service = Service(
+            apiVersion="v1",
+            kind="Service",
+            metadata=ObjectMeta(
+                namespace="test",
+                name="test-charm",
+                labels={"app.kubernetes.io/name": "test-charm"},
+            ),
+            spec=ServiceSpec(
+                selector={"app.kubernetes.io/name": "test-charm"},
+                ports=[
+                    ServicePort(name="svc1", port=1234, protocol="TCP"),
+                    ServicePort(name="svc2", port=1234, protocol="UDP"),
+                    ServicePort(name="svc3", port=1234, protocol="SCTP"),
+                ],
+                type="ClusterIP",
+            ),
+        )
+
+        self.assertEqual(service_patch.service, expected_service)
 
     def test_given_initialized_charm_when_install_event_then_event_listener_is_attached(self):
         charm = self.harness.charm
