@@ -82,9 +82,9 @@ from lightkube.models.core_v1 import ServicePort
 class SomeCharm(CharmBase):
   def __init__(self, *args):
     # ...
-    tcp = ServicePort(443, name=f"{self.app.name}-tcp", protocol="TCP)
-    udp = ServicePort(443, name=f"{self.app.name}-udp", protocol="UDP)
-    sctp = ServicePort(443, name=f"{self.app.name}-sctp", protocol="SCTP)
+    tcp = ServicePort(443, name=f"{self.app.name}-tcp", protocol="TCP")
+    udp = ServicePort(443, name=f"{self.app.name}-udp", protocol="UDP")
+    sctp = ServicePort(443, name=f"{self.app.name}-sctp", protocol="SCTP")
     self.service_patcher = KubernetesServicePatch(self, [tcp, udp, sctp])
     # ...
 ```
@@ -125,7 +125,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
