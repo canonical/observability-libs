@@ -32,7 +32,7 @@ that you also need to add `lightkube` and `lightkube-models` to your charm's `re
 ```shell
 cd some-charm
 charmcraft fetch-lib charms.observability_libs.v0.kubernetes_service_patch
-echo <<-EOF >> requirements.txt
+cat << EOF >> requirements.txt
 lightkube
 lightkube-models
 EOF
