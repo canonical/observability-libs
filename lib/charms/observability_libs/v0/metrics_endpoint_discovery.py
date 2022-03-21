@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 """TODO: Add a proper docstring here.
 
 This is a placeholder docstring for this charm library. Docstrings are
