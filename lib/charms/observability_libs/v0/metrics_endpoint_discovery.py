@@ -26,15 +26,20 @@ class MyCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.framework.observe(self.on.metrics_endpoint_change, self._on_metrics_endpoint_change)
+        self.metrics_endpoint_observer = MetricsEndpointObserver()
+
+        self.framework.observe(
+            self.metrics_endpoint_observer.on.metrics_endpoint_change,
+            self._on_metrics_endpoint_change
+        )
 
     def _on_metrics_endpoint_change(self, event):
         self.unit.status = ActiveStatus("metrics endpoints changed")
 ```
 """
 
-from ops.charm import CharmEvents
-from ops.framework import EventBase, EventSource
+from ops.charm import CharmBase, CharmEvents
+from ops.framework import EventBase, EventSource, Object
 
 # The unique Charmhub library identifier, never change it
 LIBID = "a141d5620152466781ed83aafb948d03"
@@ -56,7 +61,19 @@ class MetricsEndpointChangeEvent(EventBase):
 class MetricsEndpointChangeCharmEvents(CharmEvents):
     """A CharmEvents extension for metrics endpoint changes.
 
-    Includes MetricsEndpointChangeEvent in those that can be handled.
+    Includes :class:`MetricsEndpointChangeEvent` in those that can be handled.
     """
 
     metrics_endpoint_change = EventSource(MetricsEndpointChangeEvent)
+
+
+class MetricsEndpointObserver(Object):
+    """Observes changing metrics endpoints in the cluster.
+
+    Observed endpoint changes cause :class"`MetricsEndpointChangeEvent` to be emitted.
+    """
+
+    on = MetricsEndpointChangeCharmEvents()
+
+    def __init__(self, charm: CharmBase):
+        super().__init__(charm, "metrics-endpoint-observer")
