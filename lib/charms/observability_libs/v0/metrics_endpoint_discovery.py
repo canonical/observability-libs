@@ -21,8 +21,6 @@ from charms.observability_libs.v0.metrics_endpoint_discovery import MetricsEndpo
 
 class MyCharm(CharmBase):
 
-    on = MetricsEndpointChangeCharmEvents()
-
     def __init__(self, *args):
         super().__init__(*args)
 
