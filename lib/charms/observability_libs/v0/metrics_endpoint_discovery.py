@@ -17,22 +17,25 @@ It comprises:
 To ensure that your charm can react to changing metrics endpoint events,
 use the CharmEvents extension.
 ```python
-from charms.observability_libs.v0.metrics_endpoint_discovery import MetricsEndpointCharmEvents
+import json
+
+from charms.observability_libs.v0.metrics_endpoint_discovery import
+    MetricsEndpointCharmEvents,
+    MetricsEndpointObserver
+)
 
 class MyCharm(CharmBase):
+
+    on = MetricsEndpointChangeCharmEvents()
 
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.metrics_endpoint_observer = MetricsEndpointObserver()
+        self._observer = MetricsEndpointObserver(self, {"app.kubernetes.io/name": ["grafana-k8s"]})
+        self.framework.observe(self.on.metrics_endpoint_change, self._on_endpoints_change)
 
-        self.framework.observe(
-            self.metrics_endpoint_observer.on.metrics_endpoint_change,
-            self._on_metrics_endpoint_change
-        )
-
-    def _on_metrics_endpoint_change(self, event):
-        self.unit.status = ActiveStatus("metrics endpoints changed")
+    def _on_endpoints_change(self, event):
+        self.unit.status = ActiveStatus(json.dumps(event.discovered))
 ```
 """
 
@@ -43,6 +46,7 @@ import signal
 import subprocess
 import sys
 
+from typing import Dict, Iterable
 from lightkube import Client
 from lightkube.resources.core_v1 import Pod
 from ops.charm import CharmBase, CharmEvents
@@ -103,15 +107,19 @@ class MetricsEndpointObserver(Object):
     Observed endpoint changes cause :class"`MetricsEndpointChangeEvent` to be emitted.
     """
 
-    def __init__(self, charm: CharmBase, watch_names):
+    def __init__(self, charm: CharmBase, labels: Dict[str, Iterable]):
+        """Constructor for MetricsEndpointObserver.
+
+        Args:
+            charm: the charm that is instantiating the library.
+            labels: dictionary of label/value to be observed for changing metrics endpoints.
+        """
         super().__init__(charm, "metrics-endpoint-observer")
 
         self._charm = charm
         self._observer_pid = 0
 
-        # The names of services that we are interested in for
-        # determining added/removed metrics endpoints.
-        self._watch_names = watch_names
+        self._labels = labels
 
     def start_observer(self):
         """Start the metrics endpoint observer running in a new process."""
@@ -128,7 +136,7 @@ class MetricsEndpointObserver(Object):
             [
                 "/usr/bin/python3",
                 "lib/charms/observability_libs/v{}/metrics_endpoint_discovery.py".format(LIBAPI),
-                ",".join(self._watch_names),
+                json.dumps(self._labels),
                 "/var/lib/juju/tools/{}/juju-run".format(self.unit_tag),
                 self._charm.unit.name,
                 self._charm.charm_dir,
@@ -178,13 +186,12 @@ def main():
     Watch the input k8s service names. When changes are detected, write the
     observed data to the payload file, and dispatch the change event.
     """
-    watch_names, run_cmd, unit, charm_dir = sys.argv[1:]
+    labels, run_cmd, unit, charm_dir = sys.argv[1:]
 
     client = Client()
-    key = "app.kubernetes.io/name"
-    to_watch = watch_names.split(",")
+    labels = json.loads(labels)
 
-    for change, entity in client.watch(Pod, namespace="*", labels={key: to_watch}):
+    for change, entity in client.watch(Pod, namespace="*", labels=labels):
         meta = entity.metadata
         payload = {
             "change": change,
