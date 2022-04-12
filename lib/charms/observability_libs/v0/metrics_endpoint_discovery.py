@@ -45,8 +45,8 @@ import os
 import signal
 import subprocess
 import sys
-
 from typing import Dict, Iterable
+
 from lightkube import Client
 from lightkube.resources.core_v1 import Pod
 from ops.charm import CharmBase, CharmEvents
@@ -75,13 +75,15 @@ class MetricsEndpointChangeEvent(EventBase):
     def __init__(self, handle):
         super().__init__(handle)
 
-        with open(PAYLOAD_FILE_PATH, 'r') as f:
+        with open(PAYLOAD_FILE_PATH, "r") as f:
             self._discovered = json.loads(f.read())
 
     def snapshot(self):
+        """Save the event payload data."""
         return {"payload": self._discovered}
 
     def restore(self, snapshot):
+        """Restore the event payload data."""
         self._discovered = {}
 
         if snapshot:
@@ -89,6 +91,7 @@ class MetricsEndpointChangeEvent(EventBase):
 
     @property
     def discovered(self):
+        """Return the payload of detected endpoint changes for this event."""
         return self._discovered
 
 
@@ -193,11 +196,7 @@ def main():
 
     for change, entity in client.watch(Pod, namespace="*", labels=labels):
         meta = entity.metadata
-        payload = {
-            "change": change,
-            "namespace": meta.namespace,
-            "name": meta.name
-        }
+        payload = {"change": change, "namespace": meta.namespace, "name": meta.name}
 
         write_payload(payload)
         dispatch(run_cmd, unit, charm_dir)
