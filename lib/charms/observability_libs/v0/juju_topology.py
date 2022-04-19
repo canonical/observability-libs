@@ -71,7 +71,7 @@ topology = JujuTopology(
 
 import re
 from collections import OrderedDict
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 # The unique Charmhub library identifier, never change it
 LIBID = "bced1658f20f49d28b88f61f83c2d232"
