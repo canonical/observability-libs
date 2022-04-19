@@ -96,8 +96,8 @@ class JujuTopology:
         model: str,
         model_uuid: str,
         application: str,
-        unit: Optional[str] = "",
-        charm_name: Optional[str] = "",
+        unit: str = None,
+        charm_name: str = None,
     ):
         """Build a JujuTopology object.
 
