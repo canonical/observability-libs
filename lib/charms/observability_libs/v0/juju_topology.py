@@ -51,8 +51,11 @@ topology = JujuTopology.from_dict(scrape_metadata)
 ### Using the class constructor
 
 Enables instantiation using whatever values you want. While this
-is useful in some very specific cases, this should not be considered
-the least favored approach.
+is useful in some very specific cases, this is almost certainly not
+what you are looking for as setting these values manually may
+result in observability metrics which do not uniquely identify a
+charm in order to provide accurate usage reporting, alerting,
+horizontal scaling, or other use cases.
 
 ```python
 topology = JujuTopology(
@@ -66,6 +69,7 @@ topology = JujuTopology(
 
 """
 
+import re
 from collections import OrderedDict
 from typing import Dict, List, Optional
 
@@ -74,6 +78,14 @@ LIBID = "bced1658f20f49d28b88f61f83c2d232"
 
 LIBAPI = 0
 LIBPATCH = 1
+
+
+class InvalidUUIDError(Exception):
+    """Creates a raisable exception whenever an invalid UUID is provided."""
+
+    def __init__(self, uuid: str):
+        self.message = "'{}' is not a valid UUID.".format(uuid)
+        super().__init__(self.message)
 
 
 class JujuTopology:
@@ -105,11 +117,21 @@ class JujuTopology:
             unit: a unit name as a string
             charm_name: name of charm as a string
         """
+        if not self.is_valid_uuid(model_uuid):
+            raise InvalidUUIDError(model_uuid)
+
         self.model = model
         self.model_uuid = model_uuid
         self.application = application
         self.charm_name = charm_name
         self.unit = unit
+
+    def is_valid_uuid(self, uuid):
+        """Validates the supplied UUID against the Juju Model UUID pattern."""
+        regex = re.compile(
+            "^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}$"
+        )
+        return bool(regex.match(uuid))
 
     @classmethod
     def from_charm(cls, charm):
@@ -154,11 +176,7 @@ class JujuTopology:
         )
 
     def as_dict(
-        self,
-        *,
-        remapped_keys: Dict[str, str] = {},
-        excluded_keys: List[str] = [],
-        uuid_length: Optional[int] = None,
+        self, *, remapped_keys: Dict[str, str] = None, excluded_keys: List[str] = None
     ) -> OrderedDict:
         """Format the topology information into an ordered dict.
 
@@ -171,20 +189,17 @@ class JujuTopology:
             excluded_keys: A list of key names to exclude from the returned dict.
             uuid_length: The length to crop the UUID to.
         """
-        model_uuid = self.model_uuid[: uuid_length - 1] if uuid_length else self.model_uuid
         ret = OrderedDict(
             [
                 ("model", self.model),
-                ("model_uuid", model_uuid),
+                ("model_uuid", self.model_uuid),
                 ("application", self.application),
                 ("unit", self.unit),
                 ("charm_name", self.charm_name),
             ]
         )
-
-        for exclusion in excluded_keys:
-            if exclusion in ret:
-                ret.pop(exclusion)
+        if excluded_keys:
+            ret = OrderedDict({k: v for k, v in ret.items() if k not in excluded_keys})
 
         if remapped_keys:
             ret = OrderedDict(
@@ -193,20 +208,25 @@ class JujuTopology:
 
         return ret
 
-    def as_identifier(self) -> str:
+    @property
+    def identifier(self) -> str:
         """Format the topology information into a terse string.
 
-        This crops the model UUID, making it not suitable for comparisons against
-        anything but other identifiers.
+        This crops the model UUID, making it unsuitable for comparisons against
+        anything but other identifiers. Mainly to be used as a display name or file
+        name where long strings might become an issue.
         """
-        values = self.as_dict(
+        parts = self.as_dict(
             excluded_keys=["unit", "charm_name"],
-            uuid_length=8,
-        ).values()
+        )
+
+        parts["model_uuid"] = parts["model_uuid"][:7]
+        values = parts.values()
 
         return "_".join([str(val) for val in values]).replace("/", "_")
 
-    def as_relabelled_dict(self):
+    @property
+    def prefixed_dict(self):
         """Format the topology information into a dict with keys having 'juju_' as prefix.
 
         Relabelled topology never includes the unit as it would then only match
@@ -219,12 +239,13 @@ class JujuTopology:
 
         return {"juju_{}".format(key): value for key, value in items if value}
 
-    def as_label_matchers(self) -> str:
+    @property
+    def label_matchers(self) -> str:
         """Format the topology information into a verbose string.
 
         Topology label matchers should never include the unit as it
         would then only match the leader unit (ie. the unit that
         produced the matchers).
         """
-        items = self.as_relabelled_dict().items()
+        items = self.prefixed_dict.items()
         return ", ".join(['{}="{}"'.format(key, value) for key, value in items if value])
