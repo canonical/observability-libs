@@ -3,6 +3,7 @@
 import unittest
 from collections import OrderedDict
 
+import ops
 from charms.observability_libs.v0.juju_topology import JujuTopology
 from ops.charm import CharmBase
 from ops.testing import Harness
@@ -14,6 +15,7 @@ class JujuTopologyCharm(CharmBase):
 
 class TestJujuTopologyLib(unittest.TestCase):
     def setUp(self):
+        ops.testing.SIMULATE_CAN_CONNECT = True
         self.input = OrderedDict(
             [
                 ("model", "some-model"),

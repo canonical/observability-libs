@@ -120,11 +120,11 @@ class JujuTopology:
         if not self.is_valid_uuid(model_uuid):
             raise InvalidUUIDError(model_uuid)
 
-        self.model = model
-        self.model_uuid = model_uuid
-        self.application = application
-        self.charm_name = charm_name
-        self.unit = unit
+        self._model = model
+        self._model_uuid = model_uuid
+        self._application = application
+        self._charm_name = charm_name
+        self._unit = unit
 
     def is_valid_uuid(self, uuid):
         """Validates the supplied UUID against the Juju Model UUID pattern."""
@@ -162,7 +162,7 @@ class JujuTopology:
                 - "unit"
                 - "charm_name"
                 `unit` and `charm_name` may be empty, but will result in more limited
-                labels. However, this allows us to support payload-only charms.
+                labels. However, this allows us to support charms without workloads.
 
         Returns:
             a `JujuTopology` object.
@@ -220,7 +220,7 @@ class JujuTopology:
             excluded_keys=["unit", "charm_name"],
         )
 
-        parts["model_uuid"] = parts["model_uuid"][:7]
+        parts["model_uuid"] = self.model_uuid_short
         values = parts.values()
 
         return "_".join([str(val) for val in values]).replace("/", "_")
@@ -249,3 +249,33 @@ class JujuTopology:
         """
         items = self.prefixed_dict.items()
         return ", ".join(['{}="{}"'.format(key, value) for key, value in items if value])
+
+    @property
+    def model(self):
+        """Getter for the juju model value."""
+        return self._model
+
+    @property
+    def model_uuid(self):
+        """Getter for the juju model uuid value."""
+        return self._model_uuid
+
+    @property
+    def model_uuid_short(self):
+        """Getter for the juju model value, truncated to the first eight letters."""
+        return self._model_uuid[:7]
+
+    @property
+    def application(self):
+        """Getter for the juju application value."""
+        return self._application
+
+    @property
+    def charm_name(self):
+        """Getter for the juju charm name value."""
+        return self._charm_name
+
+    @property
+    def unit(self):
+        """Getter for the juju unit value."""
+        return self._unit
