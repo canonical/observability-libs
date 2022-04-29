@@ -241,7 +241,7 @@ class JujuTopology:
 
     @property
     def label_matchers(self) -> str:
-        """Format the topology information into a verbose string.
+        """Format the topology information into a promql/logql label matcher string.
 
         Topology label matchers should never include the unit as it
         would then only match the leader unit (ie. the unit that
