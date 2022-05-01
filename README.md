@@ -15,6 +15,8 @@ Where this charm should be used, is to access one of the following libraries dur
 - [KubernetesServicePatch] - a small library used to patch the Juju auto-created Kubernetes Service
   during the deployment of a sidecar charm to contain the correct ports for an application.
 
+- [JujuTopology] - Used to create and output Juju topologies either from charms, relation data, or parts. 
+
 ## Contributing
 
 Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this
