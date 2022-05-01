@@ -221,7 +221,7 @@ class JujuTopology:
               model_uuid = "00000000-0000-4000-8000-000000000000", \
               application = "some-app", \
               unit = "some-app/1" \
-            ).identifier 
+            ).identifier
         'a-model_00000000_some-app'
         """
         parts = self.as_dict(
