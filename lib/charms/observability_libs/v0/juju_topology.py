@@ -215,6 +215,14 @@ class JujuTopology:
         This crops the model UUID, making it unsuitable for comparisons against
         anything but other identifiers. Mainly to be used as a display name or file
         name where long strings might become an issue.
+
+        >>> JujuTopology( \
+              model = "a-model", \
+              model_uuid = "00000000-0000-4000-8000-000000000000", \
+              application = "some-app", \
+              unit = "some-app/1" \
+            ).identifier 
+        'a-model_00000000_some-app'
         """
         parts = self.as_dict(
             excluded_keys=["unit", "charm_name"],
@@ -263,7 +271,7 @@ class JujuTopology:
     @property
     def model_uuid_short(self):
         """Getter for the juju model value, truncated to the first eight letters."""
-        return self._model_uuid[:7]
+        return self._model_uuid[:8]
 
     @property
     def application(self):
