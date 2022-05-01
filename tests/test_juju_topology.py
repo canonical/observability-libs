@@ -53,7 +53,7 @@ class TestJujuTopologyLib(unittest.TestCase):
     def test_identifier_omits_unit(self):
         expected = self.input.copy()
         expected = _filter_dict(expected, ["unit", "charm_name"])
-        expected["model_uuid"] = expected["model_uuid"][:7]
+        expected["model_uuid"] = expected["model_uuid"][:8]
 
         self.assertEqual(
             self.topology.identifier,
@@ -70,12 +70,7 @@ class TestJujuTopologyLib(unittest.TestCase):
         self.assertEqual(self.topology.prefixed_dict, expected)
 
     def test_label_matchers_creates_a_valid_matcher(self):
-        prefixed = OrderedDict(
-            ("juju_{}".format("charm" if raw_key == "charm_name" else raw_key), raw_val)
-            for raw_key, raw_val in self.input.items()
-        )
-        prefixed = _filter_dict(prefixed, ["juju_unit"])
-        expected = ", ".join('{}="{}"'.format(key, value) for key, value in prefixed.items())
+        expected = 'juju_model="some-model", juju_model_uuid="00000000-0000-4000-8000-000000000000", juju_application="test-application", juju_charm="test-application"'
         self.assertEqual(expected, self.topology.label_matchers)
 
     def test_from_charm(self):
