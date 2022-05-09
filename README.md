@@ -25,3 +25,4 @@ charm following best practice guidelines, and `CONTRIBUTING.md` for developer gu
 [kubernetesservicepatch]: https://charmhub.io/observability-libs/libraries/kubernetes_service_patch
 [bundle]: https://charmhub.io/lma-light
 [charm libraries]: https://juju.is/docs/sdk/libraries
+[JujuTopology]: https://charmhub.io/observability-libs/libraries/juju_topology

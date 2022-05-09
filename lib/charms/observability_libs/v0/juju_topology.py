@@ -2,8 +2,8 @@
 # See LICENSE file for licensing details.
 """## Overview.
 
-This document explains how to use the JujuTopology class to
-create and consume topology information in a consistent manner.
+This document explains how to use the `JujuTopology` class to
+create and consume topology information from Juju in a consistent manner.
 
 The goal of the Juju topology is to uniquely identify a piece
 of software running across any of your Juju-managed deployments.
@@ -11,10 +11,9 @@ This is achieved by combining the following four elements:
 
 - Model name
 - Model UUID
-- Application Name
-- Unit Identifier
+- Application name
+- Unit identifier
 
-and in some cases, the charm name.
 
 For a more in-depth description of the concept, as well as a
 walk-through of it's use-case in observability, see
@@ -23,8 +22,8 @@ on the Juju blog.
 
 ## Library Usage
 
-This library may be used to create and consume JujuTopology objects.
-The JujuTopology class provides three ways to create instances:
+This library may be used to create and consume `JujuTopology` objects.
+The `JujuTopology` class provides three ways to create instances:
 
 ### Using the `from_charm` method
 
@@ -102,7 +101,7 @@ class JujuTopology:
         """Build a JujuTopology object.
 
         A `JujuTopology` object is used for storing and transforming
-        Juju Topology information. This information is used to
+        Juju topology information. This information is used to
         annotate Prometheus scrape jobs and alert rules. Such
         annotation when applied to scrape jobs helps in identifying
         the source of the scrapped metrics. On the other hand when
