@@ -70,7 +70,7 @@ topology = JujuTopology(
 
 import re
 from collections import OrderedDict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 # The unique Charmhub library identifier, never change it
 LIBID = "bced1658f20f49d28b88f61f83c2d232"
@@ -233,7 +233,7 @@ class JujuTopology:
         return "_".join([str(val) for val in values]).replace("/", "_")
 
     @property
-    def label_matcher_dict(self):
+    def label_matcher_dict(self) -> Dict[str, str]:
         """Format the topology information into a dict with keys having 'juju_' as prefix.
 
         Relabelled topology never includes the unit as it would then only match
@@ -258,31 +258,31 @@ class JujuTopology:
         return ", ".join(['{}="{}"'.format(key, value) for key, value in items if value])
 
     @property
-    def model(self):
+    def model(self) -> str:
         """Getter for the juju model value."""
         return self._model
 
     @property
-    def model_uuid(self):
+    def model_uuid(self) -> str:
         """Getter for the juju model uuid value."""
         return self._model_uuid
 
     @property
-    def model_uuid_short(self):
+    def model_uuid_short(self) -> str:
         """Getter for the juju model value, truncated to the first eight letters."""
         return self._model_uuid[:8]
 
     @property
-    def application(self):
+    def application(self) -> str:
         """Getter for the juju application value."""
         return self._application
 
     @property
-    def charm_name(self):
+    def charm_name(self) -> Optional[str]:
         """Getter for the juju charm name value."""
         return self._charm_name
 
     @property
-    def unit(self):
+    def unit(self) -> Optional[str]:
         """Getter for the juju unit value."""
         return self._unit
