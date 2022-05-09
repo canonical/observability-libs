@@ -80,7 +80,7 @@ LIBPATCH = 1
 
 
 class InvalidUUIDError(Exception):
-    """Creates a raisable exception whenever an invalid UUID is provided."""
+    """Invalid UUID was provided."""
 
     def __init__(self, uuid: str):
         self.message = "'{}' is not a valid UUID.".format(uuid)
