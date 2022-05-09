@@ -67,7 +67,7 @@ class TestJujuTopologyLib(unittest.TestCase):
         )
         expected = _filter_dict(expected, ["juju_unit"])
 
-        self.assertEqual(self.topology.prefixed_dict, expected)
+        self.assertEqual(self.topology.label_matcher_dict, expected)
 
     def test_label_matchers_creates_a_valid_matcher(self):
         expected = 'juju_model="some-model", juju_model_uuid="00000000-0000-4000-8000-000000000000", juju_application="test-application", juju_charm="test-application"'

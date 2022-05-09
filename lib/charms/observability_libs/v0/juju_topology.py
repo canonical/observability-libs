@@ -234,7 +234,7 @@ class JujuTopology:
         return "_".join([str(val) for val in values]).replace("/", "_")
 
     @property
-    def prefixed_dict(self):
+    def label_matcher_dict(self):
         """Format the topology information into a dict with keys having 'juju_' as prefix.
 
         Relabelled topology never includes the unit as it would then only match
@@ -255,7 +255,7 @@ class JujuTopology:
         would then only match the leader unit (ie. the unit that
         produced the matchers).
         """
-        items = self.prefixed_dict.items()
+        items = self.label_matcher_dict.items()
         return ", ".join(['{}="{}"'.format(key, value) for key, value in items if value])
 
     @property
