@@ -31,7 +31,7 @@ that you also need to add `lightkube` and `lightkube-models` to your charm's `re
 
 ```shell
 cd some-charm
-charmcraft fetch-lib charms.observability_libs.v0.kubernetes_service_patch
+charmcraft fetch-lib charms.observability_libs.v1.kubernetes_service_patch
 cat << EOF >> requirements.txt
 lightkube
 lightkube-models
@@ -44,7 +44,7 @@ For `ClusterIP` services:
 
 ```python
 # ...
-from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube.models.core_v1 import ServicePort
 
 class SomeCharm(CharmBase):
@@ -59,7 +59,7 @@ For `LoadBalancer`/`NodePort` services:
 
 ```python
 # ...
-from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube.models.core_v1 import ServicePort
 
 class SomeCharm(CharmBase):
@@ -76,7 +76,7 @@ Port protocols can also be specified. Valid protocols are `"TCP"`, `"UDP"`, and 
 
 ```python
 # ...
-from charms.observability_libs.v0.kubernetes_service_patch import KubernetesServicePatch
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube.models.core_v1 import ServicePort
 
 class SomeCharm(CharmBase):
