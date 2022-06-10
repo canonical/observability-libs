@@ -125,7 +125,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 1
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
@@ -232,7 +232,7 @@ class KubernetesServicePatch(Object):
         Raises:
             PatchFailed: if patching fails due to lack of permissions, or otherwise.
         """
-        if self.is_patched():
+        if not self.charm.unit.is_leader():
             return
 
         client = Client()

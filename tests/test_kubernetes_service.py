@@ -373,17 +373,13 @@ class TestK8sServicePatch(unittest.TestCase):
 
     @patch(f"{MOD_PATH}.Client.patch")
     @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
-    @patch(f"{CL_PATH}.is_patched", lambda *args: False)
     @patch("lightkube.core.client.GenericSyncClient", Mock)
     def test_patch_k8s_service(self, client_patch):
         charm = self.harness.charm
         self.harness.set_leader(False)
         charm.on.install.emit()
-        # Patch should work even on a non-leader unit
-        # Check we call the patch method on the client with the correct arguments
-        client_patch.assert_called_with(
-            Service, "test-charm", charm.service_patch.service, patch_type=PatchType.MERGE
-        )
+        # Patch shouldn't work on a non-leader unit
+        self.assertEqual(client_patch.call_count, 0)
 
         self.harness.set_leader(True)
         charm.on.install.emit()
