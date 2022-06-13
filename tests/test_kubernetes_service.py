@@ -373,7 +373,7 @@ class TestK8sServicePatch(unittest.TestCase):
 
     @patch(f"{MOD_PATH}.Client.patch")
     @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
-    @patch(f"{CL_PATH}.is_patched", lambda *args: False)
+    @patch(f"{CL_PATH}._is_patched", lambda *args: False)
     @patch("lightkube.core.client.GenericSyncClient", Mock)
     def test_patch_k8s_service(self, client_patch):
         charm = self.harness.charm
