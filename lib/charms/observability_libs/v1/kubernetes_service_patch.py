@@ -275,8 +275,9 @@ class KubernetesServicePatch(Object):
         # Construct a list of expected ports, should the patch be applied
         expected_ports = [(p.port, p.targetPort) for p in self.service.spec.ports]
         # Construct a list in the same manner, using the fetched service
-        fetched_ports = [(p.port, p.targetPort) for p in
-                         service.spec.ports]  # type: ignore[attr-defined]  # noqa: E501
+        fetched_ports = [
+            (p.port, p.targetPort) for p in service.spec.ports  # type: ignore[attr-defined]
+        ]  # noqa: E501
         return expected_ports == fetched_ports
 
     @property
