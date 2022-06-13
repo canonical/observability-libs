@@ -108,6 +108,7 @@ from types import MethodType
 from typing import List, Literal
 
 from lightkube import ApiError, Client
+from lightkube.core import exceptions
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Service
@@ -232,10 +233,14 @@ class KubernetesServicePatch(Object):
         Raises:
             PatchFailed: if patching fails due to lack of permissions, or otherwise.
         """
-        if not self.charm.unit.is_leader():
+        try:
+            client = Client()
+        except exceptions.ConfigError as e:
+            logger.warning("Error creating k8s client: %s", e)
+            return
+        if self._is_patched(client):
             return
 
-        client = Client()
         try:
             if self.service_name != self._app:
                 self._delete_and_create_service(client)
@@ -262,12 +267,16 @@ class KubernetesServicePatch(Object):
             bool: A boolean indicating if the service patch has been applied.
         """
         client = Client()
+        return self._is_patched(client)
+
+    def _is_patched(self, client: Client) -> bool:
         # Get the relevant service from the cluster
         service = client.get(Service, name=self.service_name, namespace=self._namespace)
         # Construct a list of expected ports, should the patch be applied
         expected_ports = [(p.port, p.targetPort) for p in self.service.spec.ports]
         # Construct a list in the same manner, using the fetched service
-        fetched_ports = [(p.port, p.targetPort) for p in service.spec.ports]  # type: ignore[attr-defined]  # noqa: E501
+        fetched_ports = [(p.port, p.targetPort) for p in
+                         service.spec.ports]  # type: ignore[attr-defined]  # noqa: E501
         return expected_ports == fetched_ports
 
     @property
