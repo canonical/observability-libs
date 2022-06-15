@@ -128,7 +128,7 @@ class JujuTopology:
     def is_valid_uuid(self, uuid):
         """Validates the supplied UUID against the Juju Model UUID pattern."""
         regex = re.compile(
-            "^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}$"
+            "^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}$"
         )
         return bool(regex.match(uuid))
 

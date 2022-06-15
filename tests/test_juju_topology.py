@@ -4,7 +4,7 @@ import unittest
 from collections import OrderedDict
 
 import ops
-from charms.observability_libs.v0.juju_topology import JujuTopology
+from charms.observability_libs.v0.juju_topology import InvalidUUIDError, JujuTopology
 from ops.charm import CharmBase
 from ops.testing import Harness
 
@@ -85,6 +85,22 @@ class TestJujuTopologyLib(unittest.TestCase):
     def test_from_dict(self):
         topology = JujuTopology.from_dict(self.input)
         self.assertEqual(topology.as_dict(), self.input)
+
+    def test_invalid_uuid(self):
+        invalid_uuid = "f2c1b2a6-006-11eb-ba80-0242ac130004"
+        topology_invalid_uuid = OrderedDict(
+            [
+                ("model", "some-model"),
+                ("model_uuid", invalid_uuid),
+                ("application", "test-application"),
+                ("unit", "test-application/0"),
+                ("charm_name", "test-application"),
+            ]
+        )
+        with self.assertRaises(InvalidUUIDError) as context:
+            JujuTopology.from_dict(topology_invalid_uuid)
+
+        self.assertTrue(f"'{invalid_uuid}' is not a valid UUID" in str(context.exception))
 
 
 def _filter_dict(labels, excluded_keys):
