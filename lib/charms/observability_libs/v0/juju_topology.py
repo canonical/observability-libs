@@ -76,7 +76,7 @@ from typing import Dict, List, Optional
 LIBID = "bced1658f20f49d28b88f61f83c2d232"
 
 LIBAPI = 0
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class InvalidUUIDError(Exception):
