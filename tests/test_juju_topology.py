@@ -1,10 +1,11 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
+import uuid
 from collections import OrderedDict
 
 import ops
-from charms.observability_libs.v0.juju_topology import JujuTopology
+from charms.observability_libs.v0.juju_topology import InvalidUUIDError, JujuTopology
 from ops.charm import CharmBase
 from ops.testing import Harness
 
@@ -85,6 +86,67 @@ class TestJujuTopologyLib(unittest.TestCase):
     def test_from_dict(self):
         topology = JujuTopology.from_dict(self.input)
         self.assertEqual(topology.as_dict(), self.input)
+
+    def test_invalid_uuid(self):
+        """Test invalid UUIDs that doesn't match the regex we use."""
+        t_uuid = str(uuid.uuid4()).split("-")
+        block1 = t_uuid[0]
+        block2 = t_uuid[1]
+        block3 = t_uuid[2]
+        block4 = t_uuid[3]
+        block5 = t_uuid[4]
+        sep = "-"
+
+        invalid_uuids = [
+            # Invalid character in each block
+            sep.join([block1[:-1] + "ñ", block2, block3, block4, block5]),
+            sep.join([block1, block2[:-1] + "ñ", block3, block4, block5]),
+            sep.join([block1, block2, block3[:-1] + "ñ", block4, block5]),
+            sep.join([block1, block2, block3, block4[:-1] + "ñ", block5]),
+            sep.join([block1, block2, block3, block4, block5[:-1] + "ñ"]),
+            # More characters in each block
+            sep.join([block1 + "a", block2, block3, block4, block5]),
+            sep.join([block1, block2 + "a", block3, block4, block5]),
+            sep.join([block1, block2, block3 + "a", block4, block5]),
+            sep.join([block1, block2, block3, block4 + "a", block5]),
+            sep.join([block1, block2, block3, block4, block5 + "a"]),
+            # Less characters in each block
+            sep.join([block1[:-1], block2, block3, block4, block5]),
+            sep.join([block1, block2[:-1], block3, block4, block5]),
+            sep.join([block1, block2, block3[:-1], block4, block5]),
+            sep.join([block1, block2, block3, block4[:-1], block5]),
+            sep.join([block1, block2, block3, block4, block5[:-1]]),
+            # More than one - in separator
+            (sep * 2).join([block1, block2, block3, block4, block5]),
+            # Missing blocks
+            sep.join([block2, block3, block4, block5]),
+            sep.join([block1, block3, block4, block5]),
+            sep.join([block1, block2, block4, block5]),
+            sep.join([block1, block2, block3, block5]),
+            sep.join([block1, block2, block3, block4]),
+            # UUID v4 validation.
+            # 1st position in block3 must start with 4
+            # Uncomment when Harness issue is fixed
+            # https://github.com/canonical/operator/issues/779
+            # sep.join([block1, block2, "5" + block3[1:], block4, block5]),
+            # 1st position in block4 must start with a, b, 8 or 9
+            sep.join([block1, block2, block3, "w" + block4[1:], block5]),
+        ]
+
+        for invalid_uuid in invalid_uuids:
+            topology_invalid_uuid = OrderedDict(
+                [
+                    ("model", "some-model"),
+                    ("model_uuid", invalid_uuid),
+                    ("application", "test-application"),
+                    ("unit", "test-application/0"),
+                    ("charm_name", "test-application"),
+                ]
+            )
+            with self.assertRaises(InvalidUUIDError) as context:
+                JujuTopology.from_dict(topology_invalid_uuid)
+
+            self.assertEqual(f"'{invalid_uuid}' is not a valid UUID.", str(context.exception))
 
 
 def _filter_dict(labels, excluded_keys):
