@@ -68,6 +68,9 @@ LIBPATCH = 1
 # between the discovery process and the materialised event.
 PAYLOAD_FILE_PATH = "/tmp/metrics-endpoint-payload.json"
 
+# File path for the spawned discovery process to write logs.
+LOG_FILE_PATH = "/var/log/discovery.log"
+
 
 class MetricsEndpointChangeEvent(EventBase):
     """A custom event for metrics endpoint changes."""
@@ -133,7 +136,8 @@ class MetricsEndpointObserver(Object):
         # We need to trick Juju into thinking that we are not running
         # in a hook context, as Juju will disallow use of juju-run.
         new_env = os.environ.copy()
-        new_env.pop("JUJU_CONTEXT_ID")
+        if "JUJU_CONTEXT_ID" in new_env:
+            new_env.pop("JUJU_CONTEXT_ID")
 
         pid = subprocess.Popen(
             [
@@ -144,7 +148,7 @@ class MetricsEndpointObserver(Object):
                 self._charm.unit.name,
                 self._charm.charm_dir,
             ],
-            stdout=open("/var/log/discovery.log", "a"),
+            stdout=open(LOG_FILE_PATH, "a"),
             stderr=subprocess.STDOUT,
             env=new_env,
         ).pid
