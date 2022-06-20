@@ -4,7 +4,6 @@
 import unittest
 
 from charms.observability_libs.v0.metrics_endpoint_discovery import (
-    PAYLOAD_FILE_PATH,
     MetricsEndpointChangeCharmEvents,
     MetricsEndpointObserver,
     write_payload,
