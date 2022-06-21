@@ -154,7 +154,7 @@ class KubernetesComputeResourcesPatch(Object):
             self.framework.observe(ev, self._patch)
 
     @classmethod
-    def _patched_statefulset_object(
+    def _patched_delta(
         cls,
         namespace: str,
         app_name: str,
@@ -196,14 +196,21 @@ class KubernetesComputeResourcesPatch(Object):
             return
 
         try:
-            patched_obj = self._patched_statefulset_object(
+            patched_delta = self._patched_delta(
                 namespace=self._namespace,
                 app_name=self._app,
                 container_name=self.container_name,
                 limits=self.limits,
                 requests=self.requests,
             )
-            client.patch(StatefulSet, self._app, patched_obj, patch_type=PatchType.MERGE)
+            client.patch(
+                StatefulSet,
+                self._app,
+                patched_delta,
+                namespace=self._namespace,
+                patch_type=PatchType.APPLY,
+                field_manager=self.__class__.__name__,
+            )
         except ApiError as e:
             if e.status.code == 403:
                 logger.error("Kubernetes resources patch failed: `juju trust` this application.")
