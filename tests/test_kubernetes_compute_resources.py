@@ -22,7 +22,6 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 "container-name",
                 limits=None,
                 requests=None,
-                refresh_event=self.on.config_changed,
             )
 
     def setUp(self) -> None:
@@ -31,11 +30,9 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
 
     def test_listener_is_attached_for_default_and_refresh_events(self):
         charm = self.harness.charm
-        for event in [charm.on.install, charm.on.upgrade_charm, charm.on.config_changed]:
-            with self.subTest(event=event):
-                with mock.patch(f"{CL_PATH}._patch") as patch:
-                    event.emit()
-                    self.assertEqual(patch.call_count, 1)
+        with mock.patch(f"{CL_PATH}._patch") as patch:
+            charm.on.config_changed.emit()
+            self.assertEqual(patch.call_count, 1)
 
     def test_patch_is_applied_regardless_of_leadership_status(self):
         charm = self.harness.charm
@@ -43,5 +40,5 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             with self.subTest(is_leader=is_leader):
                 self.harness.set_leader(True)
                 with mock.patch(f"{CL_PATH}._patch") as patch:
-                    charm.on.install.emit()
+                    charm.on.config_changed.emit()
                     self.assertEqual(patch.call_count, 1)
