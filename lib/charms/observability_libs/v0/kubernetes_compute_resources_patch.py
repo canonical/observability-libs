@@ -6,10 +6,10 @@
 This library is designed to enable developers to more simply patch the Kubernetes compute resource
 limits and requests created by Juju during the deployment of a sidecar charm.
 
-When initialised, this library binds a handler to the parent charm's `install` and `upgrade_charm`
-events which applies the patch to the cluster. This should ensure that the resource limits are
-correct throughout the charm's life. Additional optional user-provided events for re-applying the
-patch are supported.
+When initialised, this library binds a handler to the parent charm's `config-changed` event, which
+applies the patch to the cluster. This should ensure that the resource limits are correct
+throughout the charm's life. Additional optional user-provided events for re-applying the patch are
+supported but discouraged.
 
 The constructor takes a reference to the parent charm, a 'limits' and a 'requests' dictionaries
 that together define the resource requirements. For information regarding the `lightkube`
@@ -142,9 +142,12 @@ class KubernetesComputeResourcesPatch(Object):
 
         # Make mypy type checking happy that self._patch is a method
         assert isinstance(self._patch, MethodType)
-        # Ensure this patch is applied during the 'install' and 'upgrade-charm' events
-        self.framework.observe(charm.on.install, self._patch)
-        self.framework.observe(charm.on.upgrade_charm, self._patch)
+        # Ensure this patch is applied during the 'config-changed' event, which is emitted every
+        # startup and every upgrade. The config-changed event is a good time to apply this kind of
+        # patch because it is always emitted after storage-attached, leadership and peer-created,
+        # all of which only fire after install. Patching the statefulset prematurely could result
+        # in those events firing without a workload.
+        self.framework.observe(charm.on.config_changed, self._patch)
 
         if not refresh_event:
             refresh_event = []
