@@ -25,21 +25,22 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 requests=None,
             )
 
-    @mock.patch(f"{CL_PATH}._namespace", "test-namespace")
-    @mock.patch("lightkube.core.client.GenericSyncClient", Mock)
     def setUp(self) -> None:
         self.harness = Harness(self._TestCharm, meta="name: test-charm")
-        self.harness.begin()
 
+    @mock.patch("lightkube.core.client.GenericSyncClient", Mock)
     @mock.patch(f"{CL_PATH}._namespace", "test-namespace")
-    def test_listener_is_attached_for_default_and_refresh_events(self):
+    def test_listener_is_attached_for_config_changed_event(self):
+        self.harness.begin()
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
             charm.on.config_changed.emit()
             self.assertEqual(patch.call_count, 1)
 
+    @mock.patch("lightkube.core.client.GenericSyncClient", Mock)
     @mock.patch(f"{CL_PATH}._namespace", "test-namespace")
     def test_patch_is_applied_regardless_of_leadership_status(self):
+        self.harness.begin()
         charm = self.harness.charm
         for is_leader in (True, False):
             with self.subTest(is_leader=is_leader):
@@ -47,3 +48,10 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 with mock.patch(f"{CL_PATH}._patch") as patch:
                     charm.on.config_changed.emit()
                     self.assertEqual(patch.call_count, 1)
+
+    @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
+    @mock.patch(f"{CL_PATH}._is_patched", lambda *a, **kw: False)
+    @mock.patch("lightkube.core.client.GenericSyncClient")
+    def test_patch_is_applied_during_startup_sequence(self, client_mock):
+        self.harness.begin_with_initial_hooks()
+        self.assertGreater(client_mock.call_count, 0)
