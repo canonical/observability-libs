@@ -59,8 +59,8 @@ present, and could break your tests. The easiest way to do this is during your t
 ```python
 # ...
 
-@patch("charm.KubernetesComputeResourcesPatch", lambda *a, **kw: None)
-def setUp(self):
+@patch("charm.KubernetesComputeResourcesPatch")
+def setUp(self, *unused):
     self.harness = Harness(SomeCharm)
     # ...
 ```
