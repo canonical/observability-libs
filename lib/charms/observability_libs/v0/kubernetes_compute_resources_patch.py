@@ -80,6 +80,7 @@ from lightkube.models.core_v1 import (
     ResourceRequirements,
 )
 from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.resources.core_v1 import Pod
 from lightkube.types import PatchType
 from ops.charm import CharmBase
 from ops.framework import BoundEvent, Object
@@ -137,8 +138,16 @@ class KubernetesComputeResourcesPatch(Object):
         super().__init__(charm, "kubernetes-compute-resource-patch")
         self.charm = charm
         self.container_name = container_name
-        self.limits = limits
-        self.requests = requests
+        self.resource_reqs = ResourceRequirements(
+            limits=limits,  # type: ignore[arg-type]
+            requests=requests,  # type: ignore[arg-type]
+        )
+        self.patched_delta = self._patched_delta(
+            namespace=self._namespace,
+            app_name=self._app,
+            container_name=self.container_name,
+            resource_reqs=self.resource_reqs,
+        )
 
         # Make mypy type checking happy that self._patch is a method
         assert isinstance(self._patch, MethodType)
@@ -162,8 +171,7 @@ class KubernetesComputeResourcesPatch(Object):
         namespace: str,
         app_name: str,
         container_name: str,
-        limits: Optional[ResourceSpecDict] = None,
-        requests: Optional[ResourceSpecDict] = None,
+        resource_reqs: ResourceRequirements,
     ) -> StatefulSet:
         client = Client()
         statefulset = client.get(StatefulSet, name=app_name, namespace=namespace)
@@ -174,15 +182,7 @@ class KubernetesComputeResourcesPatch(Object):
                 serviceName=statefulset.spec.serviceName,  # type: ignore[attr-defined]
                 template=PodTemplateSpec(
                     spec=PodSpec(
-                        containers=[
-                            Container(
-                                name=container_name,
-                                resources=ResourceRequirements(
-                                    limits=limits,  # type: ignore[arg-type]
-                                    requests=requests,  # type: ignore[arg-type]
-                                ),
-                            )
-                        ]
+                        containers=[Container(name=container_name, resources=resource_reqs)]
                     )
                 ),
             )
@@ -199,17 +199,11 @@ class KubernetesComputeResourcesPatch(Object):
             return
 
         try:
-            patched_delta = self._patched_delta(
-                namespace=self._namespace,
-                app_name=self._app,
-                container_name=self.container_name,
-                limits=self.limits,
-                requests=self.requests,
-            )
+
             client.patch(
                 StatefulSet,
                 self._app,
-                patched_delta,
+                self.patched_delta,
                 namespace=self._namespace,
                 patch_type=PatchType.APPLY,
                 field_manager=self.__class__.__name__,
@@ -221,16 +215,14 @@ class KubernetesComputeResourcesPatch(Object):
                 logger.error("Kubernetes resources patch failed: %s", str(e))
         else:
             logger.info(
-                "Kubernetes resources for app '%s', container '%s' patched successfully: "
-                "limits = %s, requests = %s",
+                "Kubernetes resources for app '%s', container '%s' patched successfully: %s",
                 self._app,
                 self.container_name,
-                self.limits,
-                self.requests,
+                self.resource_reqs,
             )
 
     def is_patched(self) -> bool:
-        """Reports if the service patch has been applied.
+        """Reports if the resource patch has been applied.
 
         Returns:
             bool: A boolean indicating if the service patch has been applied.
@@ -238,25 +230,43 @@ class KubernetesComputeResourcesPatch(Object):
         client = Client()
         return self._is_patched(client)
 
+    def is_ready(self):
+        """Reports if the resource patch has been applied and is in effect.
+
+        Returns:
+            bool: A boolean indicating if the service patch has been applied and is in effect.
+        """
+        client = Client()
+        pod = client.get(Pod, name=self._pod, namespace=self._namespace)
+        podspec = self._get_container(self.container_name, pod.spec.containers)  # type: ignore[attr-defined]
+        return self._is_patched(client) and self.resource_reqs == podspec.resources
+
+    @classmethod
+    def _get_container(cls, container_name: str, containers: List[Container]) -> Container:
+        """Find our container from the container list, assuming list is unique by name.
+
+        Typically, *.spec.containers[0] is the charm container, and [1] is the (only) workload.
+
+        Raises:
+            StopIteration, if the user-provided container name does not exist in the list.
+
+        Returns:
+            An instance of :class:`Container` whose name matches the given name.
+        """
+        return next(iter(filter(lambda ctr: ctr.name == container_name, containers)))
+
     def _is_patched(self, client: Client) -> bool:
+        """Reports if the resource patch has been applied to the StatefulSet.
+
+        Returns:
+            bool: A boolean indicating if the service patch has been applied.
+        """
         statefulset = client.get(StatefulSet, name=self._app, namespace=self._namespace)
-
-        # Find the right container
-        container = None
-        for ctr in statefulset.spec.template.spec.containers:  # type: ignore[attr-defined]
-            if ctr.name == self.container_name:
-                container = ctr
-                break
-
-        if not container:
-            assert False  # FIXME raise instead
-
-        return all(
-            [
-                container.resources.limits == self.limits,
-                container.resources.requests == self.requests,
-            ]
+        podspec_tpl = self._get_container(
+            self.container_name,
+            statefulset.spec.template.spec.containers,  # type: ignore[attr-defined]
         )
+        return podspec_tpl.resources == self.resource_reqs
 
     @property
     def _app(self) -> str:
@@ -266,6 +276,15 @@ class KubernetesComputeResourcesPatch(Object):
             str: A string containing the name of the current Juju application.
         """
         return self.charm.app.name
+
+    @property
+    def _pod(self) -> str:
+        """Name of the unit's pod.
+
+        Returns:
+            str: A string containing the name of the current unit's pod.
+        """
+        return "-".join(self.charm.unit.name.rsplit("/", 1))
 
     @property
     def _namespace(self) -> str:

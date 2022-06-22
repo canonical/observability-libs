@@ -3,6 +3,7 @@
 
 import unittest
 from unittest import mock
+from unittest.mock import Mock
 
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
@@ -24,16 +25,20 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 requests=None,
             )
 
+    @mock.patch(f"{CL_PATH}._namespace", "test-namespace")
+    @mock.patch("lightkube.core.client.GenericSyncClient", Mock)
     def setUp(self) -> None:
         self.harness = Harness(self._TestCharm, meta="name: test-charm")
         self.harness.begin()
 
+    @mock.patch(f"{CL_PATH}._namespace", "test-namespace")
     def test_listener_is_attached_for_default_and_refresh_events(self):
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
             charm.on.config_changed.emit()
             self.assertEqual(patch.call_count, 1)
 
+    @mock.patch(f"{CL_PATH}._namespace", "test-namespace")
     def test_patch_is_applied_regardless_of_leadership_status(self):
         charm = self.harness.charm
         for is_leader in (True, False):
