@@ -67,7 +67,7 @@ topology = JujuTopology(
 ```
 
 """
-
+from uuid import UUID
 import re
 from collections import OrderedDict
 from typing import Dict, List, Optional
@@ -126,29 +126,19 @@ class JujuTopology:
         self._unit = unit
 
     def is_valid_uuid(self, uuid):
-        """Validate the supplied UUID against the Juju Model UUID pattern."""
-        # TODO:
-        # Harness is harcoding an UUID that is v1 not v4: f2c1b2a6-e006-11eb-ba80-0242ac130004
-        # See: https://github.com/canonical/operator/issues/779
-        #
-        # >>> uuid.UUID("f2c1b2a6-e006-11eb-ba80-0242ac130004").version
-        # 1
-        #
-        # we changed the validation of the 3ed UUID block: 4[a-f0-9]{3} -> [a-f0-9]{4}
-        # See: https://github.com/canonical/operator/blob/main/ops/testing.py#L1094
-        #
-        # Juju in fact generates a UUID v4: https://github.com/juju/utils/blob/master/uuid.go#L62
-        # but does not validate it is actually v4:
-        # See:
-        # - https://github.com/juju/utils/blob/master/uuid.go#L22
-        # - https://github.com/juju/schema/blob/master/strings.go#L79
-        #
-        # Once Harness fixes this, we should remove this comment and refactor the regex or
-        # the entire method using the uuid module to validate UUIDs
-        regex = re.compile(
-            "^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}$"
-        )
-        return bool(regex.match(uuid))
+        """Validate the supplied UUID against the Juju Model UUID pattern.
+
+        Args:
+            uuid: string that needs to be checked if it is valid v4 UUID
+        Returns:
+            if parameter is valid v4 UUID
+        """
+        version = 4
+        try:
+            convert_to_uuid = UUID(uuid, version=version)
+            return str(convert_to_uuid) == uuid
+        except ValueError:
+            return False
 
     @classmethod
     def from_charm(cls, charm):
