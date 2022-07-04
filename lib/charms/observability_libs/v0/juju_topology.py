@@ -128,9 +128,10 @@ class JujuTopology:
         """Validate the supplied UUID against the Juju Model UUID pattern.
 
         Args:
-            uuid: string that needs to be checked if it is valid v4 UUID
+            uuid: string that needs to be checked if it is valid v4 UUID.
+
         Returns:
-            if parameter is valid v4 UUID
+            True if parameter is a valid v4 UUID, False otherwise.
         """
         try:
             return str(UUID(uuid, version=4)) == uuid
