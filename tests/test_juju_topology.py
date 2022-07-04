@@ -126,11 +126,13 @@ class TestJujuTopologyLib(unittest.TestCase):
             sep.join([block1, block2, block3, block4]),
             # UUID v4 validation.
             # 1st position in block3 must start with 4
-            # Uncomment when Harness issue is fixed
-            # https://github.com/canonical/operator/issues/779
-            # sep.join([block1, block2, "5" + block3[1:], block4, block5]),
+            sep.join([block1, block2, "5" + block3[1:], block4, block5]),
             # 1st position in block4 must start with a, b, 8 or 9
             sep.join([block1, block2, block3, "w" + block4[1:], block5]),
+            # UUID v1
+            str(uuid.uuid1()),
+            # UUID v5
+            str(uuid.uuid5(uuid.NAMESPACE_DNS, "juju.is")),
         ]
 
         for invalid_uuid in invalid_uuids:
