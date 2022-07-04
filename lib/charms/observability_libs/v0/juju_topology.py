@@ -67,10 +67,9 @@ topology = JujuTopology(
 ```
 
 """
-from uuid import UUID
-import re
 from collections import OrderedDict
 from typing import Dict, List, Optional
+from uuid import UUID
 
 # The unique Charmhub library identifier, never change it
 LIBID = "bced1658f20f49d28b88f61f83c2d232"
@@ -133,11 +132,9 @@ class JujuTopology:
         Returns:
             if parameter is valid v4 UUID
         """
-        version = 4
         try:
-            convert_to_uuid = UUID(uuid, version=version)
-            return str(convert_to_uuid) == uuid
-        except ValueError:
+            return str(UUID(uuid, version=4)) == uuid
+        except (ValueError, TypeError):
             return False
 
     @classmethod
