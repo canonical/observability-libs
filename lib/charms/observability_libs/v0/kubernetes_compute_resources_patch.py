@@ -300,7 +300,7 @@ class KubernetesComputeResourcesPatch(Object):
         So need to parse the strings and convert before comparing.
         """
 
-        def _conv(dct: ResourceSpecDict) -> Optional[ResourceSpecDict]:
+        def _conv(dct: Optional[ResourceSpecDict]) -> Optional[ResourceSpecDict]:
             """Convert the memory value of a ResourceSpecDict to GiB representation.
 
             Raises:

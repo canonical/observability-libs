@@ -5,15 +5,14 @@
 
 """A tester charm for the Observability libs."""
 
-from ops.charm import CharmBase
-from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
-
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     K8sResourcePatchFailedEvent,
     KubernetesComputeResourcesPatch,
     ResourceSpecDict,
 )
+from ops.charm import CharmBase
+from ops.main import main
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 
 class ObservabilityLibsCharm(CharmBase):

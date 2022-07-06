@@ -9,10 +9,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-from pytest_operator.plugin import OpsTest
-
 from lightkube import Client
 from lightkube.resources.core_v1 import Pod
+from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ default_limits = None
 def get_podspec(ops_test: OpsTest, app_name: str, container_name: str):
     client = Client()
     pod = client.get(Pod, name=f"{app_name}-0", namespace=ops_test.model_name)
-    podspec = next(iter(filter(lambda ctr: ctr.name == container_name, pod.spec.containers)))
+    podspec = next(iter(filter(lambda ctr: ctr.name == container_name, pod.spec.containers)))  # type: ignore
     return podspec
 
 
