@@ -126,7 +126,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
@@ -271,7 +271,15 @@ class KubernetesServicePatch(Object):
 
     def _is_patched(self, client: Client) -> bool:
         # Get the relevant service from the cluster
-        service = client.get(Service, name=self.service_name, namespace=self._namespace)
+        try:
+            service = client.get(Service, name=self.service_name, namespace=self._namespace)
+        except ApiError as e:
+            if e.status.code == 404 and self.service_name != self._app:
+                return False
+            else:
+                logger.error("Kubernetes service get failed: %s", str(e))
+                raise
+
         # Construct a list of expected ports, should the patch be applied
         expected_ports = [(p.port, p.targetPort) for p in self.service.spec.ports]
         # Construct a list in the same manner, using the fetched service

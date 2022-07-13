@@ -453,3 +453,41 @@ class TestK8sServicePatch(unittest.TestCase):
         self.assertEqual(self.harness.charm.service_patch._app, "test-charm")
         self.assertEqual(self.harness.charm.service_patch._namespace, "test")
         mock.assert_called_with("/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r")
+
+    @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch(f"{CL_PATH}._namespace", "test")
+    @patch(f"{MOD_PATH}.Client")
+    def test_is_patched_k8s_service_with_alternative_name(self, client):
+        charm = self.custom_service_name_harness.charm
+        self.harness.set_leader(False)
+
+        client.return_value = client
+        client.get.side_effect = _FakeApiError(404)
+        self.assertEqual(charm.custom_service_name_service_patch.is_patched(), False)
+
+    @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch(f"{CL_PATH}._namespace", "test")
+    @patch(f"{MOD_PATH}.Client")
+    def test_is_patched_k8s_service_api_error_without_alternative_name(self, client):
+        self.harness.set_leader(False)
+
+        client.return_value = client
+        client.get.side_effect = _FakeApiError(404)
+        with self.assertLogs(MOD_PATH) as logs:
+            with self.assertRaises(_FakeApiError):
+                self.harness.charm.service_patch.is_patched()
+            self.assertIn("Kubernetes service get failed: broken", ";".join(logs.output))
+
+    @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch(f"{CL_PATH}._namespace", "test")
+    @patch(f"{MOD_PATH}.Client")
+    def test_is_patched_k8s_service_api_error_not_404(self, client):
+        charm = self.custom_service_name_harness.charm
+        self.harness.set_leader(False)
+
+        client.return_value = client
+        client.get.side_effect = _FakeApiError(500)
+        with self.assertLogs(MOD_PATH) as logs:
+            with self.assertRaises(_FakeApiError):
+                charm.custom_service_name_service_patch.is_patched()
+            self.assertIn("Kubernetes service get failed: broken", ";".join(logs.output))
