@@ -468,7 +468,7 @@ class TestK8sServicePatch(unittest.TestCase):
     @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
     @patch(f"{CL_PATH}._namespace", "test")
     @patch(f"{MOD_PATH}.Client")
-    def test_is_patched_k8s_service_api_error_without_alternative_name(self, client):
+    def test_is_patched_k8s_service_api_error_with_default_name(self, client):
         self.harness.set_leader(False)
 
         client.return_value = client
