@@ -238,10 +238,10 @@ class KubernetesServicePatch(Object):
         except exceptions.ConfigError as e:
             logger.warning("Error creating k8s client: %s", e)
             return
-        if self._is_patched(client):
-            return
 
         try:
+            if self._is_patched(client):
+                return
             if self.service_name != self._app:
                 self._delete_and_create_service(client)
             client.patch(Service, self.service_name, self.service, patch_type=PatchType.MERGE)
