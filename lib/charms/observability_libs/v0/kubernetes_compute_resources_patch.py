@@ -323,7 +323,7 @@ class KubernetesComputeResourcesPatch(Object):
             refresh_event: an optional bound event or list of bound events which
                 will be observed to re-apply the patch.
         """
-        super().__init__(charm, "kubernetes-compute-resource-patch")
+        super().__init__(charm, "{}_{}".format(self.__class__.__name__, container_name))
         self._charm = charm
         self._container_name = container_name
         self.limits = limits
