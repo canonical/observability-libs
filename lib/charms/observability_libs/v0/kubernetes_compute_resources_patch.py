@@ -74,7 +74,6 @@ def setUp(self, *unused):
 """
 
 import logging
-from decimal import Decimal
 from math import ceil, floor
 from typing import Dict, List, Optional, TypedDict, Union
 
@@ -136,7 +135,7 @@ def sanitize_resource_spec_dict(dct: Optional[ResourceSpecDict]) -> Optional[Res
     memory = d.get("memory")
     if memory:
         as_decimal = parse_quantity(memory)
-        if as_decimal.remainder_near(floor(as_decimal)):
+        if as_decimal and as_decimal.remainder_near(floor(as_decimal)):
             d["memory"] = str(ceil(as_decimal))
     return d
 

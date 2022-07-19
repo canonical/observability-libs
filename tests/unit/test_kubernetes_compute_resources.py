@@ -73,7 +73,7 @@ class TestSanitizeResourceSpecDict(unittest.TestCase):
     def test_sanitize_resource_spec_dict(self):
         self.assertEqual(None, sanitize_resource_spec_dict(None))
         self.assertEqual({}, sanitize_resource_spec_dict({}))
-        self.assertEqual({}, sanitize_resource_spec_dict({"bad": "combo"}))
-        self.assertEqual({"cpu": 1}, sanitize_resource_spec_dict({"cpu": 1}))
+        self.assertEqual({}, sanitize_resource_spec_dict({"bad": "combo"}))  # type: ignore
+        self.assertEqual({"cpu": 1}, sanitize_resource_spec_dict({"cpu": 1}))  # type: ignore
         self.assertEqual({"cpu": "1"}, sanitize_resource_spec_dict({"cpu": "1"}))
         self.assertEqual({"memory": "858993460"}, sanitize_resource_spec_dict({"memory": "0.8Gi"}))
