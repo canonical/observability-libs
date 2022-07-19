@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
+    is_valid_spec,
     sanitize_resource_spec_dict,
 )
 from ops.charm import CharmBase
@@ -24,6 +25,11 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 limits=None,
                 requests=None,
             )
+            self.framework.observe(self.resources_patch.on.patch_failed, self._patch_failed)
+            self.patch_failed_counter = 0
+
+        def _patch_failed(self, _):
+            self.patch_failed_counter += 1
 
     def setUp(self) -> None:
         self.harness = Harness(
@@ -59,21 +65,38 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
     @mock.patch("lightkube.core.client.GenericSyncClient")
-    def test_invalid_config_raises(self, client_mock):
+    def test_invalid_config_emits_custom_event(self, client_mock):
         self.harness.begin_with_initial_hooks()
-        with self.assertRaises(ValueError):
-            self.harness.update_config({"cpuu": "1"})
-        with self.assertRaises(ValueError):
-            self.harness.update_config({"memoryy": "1Gi"})
+        for (cpu, memory) in [
+            ("-1", ""),
+            ("", "-1Gi"),
+            ("-1", "1Gi"),
+            ("1", "-1Gi"),
+            ("4x", "1Gi"),
+            ("1", "1Gx"),
+        ]:
+            with self.subTest(cpu=cpu, memory=memory):
+                before = self.harness.charm.patch_failed_counter
+                self.harness.update_config({"cpu": cpu, "memory": memory})
+                after = self.harness.charm.patch_failed_counter
+                self.assertGreater(after, before)
 
-        # TODO: [("-1", "1Gi"), ("1", "-1Gi"), ("4x", "1Gi"), ("1", "1Gx")]
 
-
-class TestSanitizeResourceSpecDict(unittest.TestCase):
+class TestResourceSpecDictValidation(unittest.TestCase):
     def test_sanitize_resource_spec_dict(self):
         self.assertEqual(None, sanitize_resource_spec_dict(None))
         self.assertEqual({}, sanitize_resource_spec_dict({}))
-        self.assertEqual({}, sanitize_resource_spec_dict({"bad": "combo"}))  # type: ignore
+        self.assertEqual({"bad": "combo"}, sanitize_resource_spec_dict({"bad": "combo"}))  # type: ignore
         self.assertEqual({"cpu": 1}, sanitize_resource_spec_dict({"cpu": 1}))  # type: ignore
         self.assertEqual({"cpu": "1"}, sanitize_resource_spec_dict({"cpu": "1"}))
         self.assertEqual({"memory": "858993460"}, sanitize_resource_spec_dict({"memory": "0.8Gi"}))
+
+    def test_is_valid_spec(self):
+        self.assertTrue(is_valid_spec(None))
+        self.assertTrue(is_valid_spec({}))
+        self.assertTrue(is_valid_spec({"cpu": "1"}))
+        self.assertTrue(is_valid_spec({"memory": "858993460"}))
+        self.assertTrue(is_valid_spec({"memory": "0.8Gi"}))
+        self.assertTrue(is_valid_spec({"cpu": None, "memory": None}))
+
+        self.assertFalse(is_valid_spec({"bad": "combo"}))  # type: ignore

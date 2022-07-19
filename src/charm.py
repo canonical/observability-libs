@@ -51,8 +51,9 @@ class ObservabilityLibsCharm(CharmBase):
         if not self.resources_patch.is_ready():
             if isinstance(self.unit.status, ActiveStatus) or self.unit.status.message == "":
                 self.unit.status = MaintenanceStatus(
-                    "Waiting for resource limit patch to apply: {}".format(
-                        self.resources_patch.resource_reqs
+                    "Waiting for resource limit patch to apply: limits={}, requests={}".format(
+                        self.resources_patch.limits,
+                        self.resources_patch.requests,
                     )
                 )
             return
