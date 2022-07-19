@@ -60,7 +60,7 @@ async def test_default_resource_limits_applied(ops_test: OpsTest):
 
 
 @pytest.mark.abort_on_fail
-@pytest.mark.parametrize("cpu,memory", [("500m", "0.5Gi"), ("0.30000000000000004", "0.5G")])
+@pytest.mark.parametrize("cpu,memory", [("500m", "0.15Gi"), ("0.30000000000000004", "0.15G")])
 async def test_resource_limits_match_config(ops_test: OpsTest, cpu, memory):
     custom_limits = {"cpu": cpu, "memory": memory}
     await ops_test.model.applications[app_name].set_config(custom_limits)

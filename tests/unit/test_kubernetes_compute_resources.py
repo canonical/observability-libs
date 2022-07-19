@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
+    sanitize_resource_spec_dict,
 )
 from ops.charm import CharmBase
 from ops.testing import Harness
@@ -51,14 +52,12 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                     self.assertEqual(patch.call_count, 1)
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
-    @mock.patch(f"{CL_PATH}._is_patched", lambda *a, **kw: False)
     @mock.patch("lightkube.core.client.GenericSyncClient")
     def test_patch_is_applied_during_startup_sequence(self, client_mock):
         self.harness.begin_with_initial_hooks()
         self.assertGreater(client_mock.call_count, 0)
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
-    @mock.patch(f"{CL_PATH}._is_patched", lambda *a, **kw: False)
     @mock.patch("lightkube.core.client.GenericSyncClient")
     def test_invalid_config_raises(self, client_mock):
         self.harness.begin_with_initial_hooks()
@@ -68,3 +67,13 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.harness.update_config({"memoryy": "1Gi"})
 
         # TODO: [("-1", "1Gi"), ("1", "-1Gi"), ("4x", "1Gi"), ("1", "1Gx")]
+
+
+class TestSanitizeResourceSpecDict(unittest.TestCase):
+    def test_sanitize_resource_spec_dict(self):
+        self.assertEqual(None, sanitize_resource_spec_dict(None))
+        self.assertEqual({}, sanitize_resource_spec_dict({}))
+        self.assertEqual({}, sanitize_resource_spec_dict({"bad": "combo"}))
+        self.assertEqual({"cpu": 1}, sanitize_resource_spec_dict({"cpu": 1}))
+        self.assertEqual({"cpu": "1"}, sanitize_resource_spec_dict({"cpu": "1"}))
+        self.assertEqual({"memory": "858993460"}, sanitize_resource_spec_dict({"memory": "0.8Gi"}))
