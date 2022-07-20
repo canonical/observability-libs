@@ -22,8 +22,8 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.resources_patch = KubernetesComputeResourcesPatch(
                 self,
                 "placeholder",
-                limits=None,
-                requests=None,
+                limits_func=lambda: None,
+                requests_func=lambda: None,
             )
             self.framework.observe(self.resources_patch.on.patch_failed, self._patch_failed)
             self.patch_failed_counter = 0

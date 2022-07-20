@@ -23,15 +23,11 @@ class ObservabilityLibsCharm(CharmBase):
 
         self._container_name = "placeholder"
 
-        resource_limit = ResourceSpecDict(
-            cpu=self.model.config.get("cpu"),
-            memory=self.model.config.get("memory"),
-        )
         self.resources_patch = KubernetesComputeResourcesPatch(
             self,
             self._container_name,
-            limits=resource_limit,
-            requests=resource_limit,
+            limits_func=lambda: self._resource_spec_from_config(),
+            requests_func=lambda: self._resource_spec_from_config(),
         )
         self.framework.observe(
             self.resources_patch.on.patch_failed, self._on_resource_patch_failed
@@ -42,6 +38,13 @@ class ObservabilityLibsCharm(CharmBase):
         # self.framework.observe(self.on.placeholder_pebble_ready, self._configure)
         # self.framework.observe(self.on.start, self._configure)
 
+    def _resource_spec_from_config(self):
+        resource_limit = ResourceSpecDict(
+            cpu=self.model.config.get("cpu"),
+            memory=self.model.config.get("memory"),
+        )
+        return resource_limit
+
     def _on_resource_patch_failed(self, event: K8sResourcePatchFailedEvent):
         self.unit.status = BlockedStatus(event.message)
 
@@ -50,12 +53,7 @@ class ObservabilityLibsCharm(CharmBase):
 
         if not self.resources_patch.is_ready():
             if isinstance(self.unit.status, ActiveStatus) or self.unit.status.message == "":
-                self.unit.status = MaintenanceStatus(
-                    "Waiting for resource limit patch to apply: limits={}, requests={}".format(
-                        self.resources_patch.limits,
-                        self.resources_patch.requests,
-                    )
-                )
+                self.unit.status = MaintenanceStatus("Waiting for resource limit patch to apply")
             return
 
         if not container.can_connect():
