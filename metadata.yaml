@@ -1,10 +1,16 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 name: observability-libs
+assumes:
+  - k8s-api
 description: |
   A placeholder charm that contains helpful charm libraries curated by the
   Canonical Observability charm team.
 summary: Collection of Charm Libraries for the Observability charms.
+website: https://charmhub.io/observability-libs
+source: https://github.com/canonical/observability-libs
+issues: https://github.com/canonical/observability-libs/issues
+
 containers:
   placeholder:
     resource: placeholder-image
@@ -13,3 +19,4 @@ resources:
   placeholder-image:
     type: oci-image
     description: OCI image for placeholder
+    upstream-source: busybox
