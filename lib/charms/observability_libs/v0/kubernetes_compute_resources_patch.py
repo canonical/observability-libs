@@ -268,7 +268,7 @@ def limits_to_requests_scaled(
 
 def adjust_limits_and_requests(
     limits: ResourceSpecDict, requests: ResourceSpecDict, adhere_to_requests: bool = True
-) -> Tuple[ResourceSpecDict, ResourceSpecDict]:
+) -> ResourceRequirements:
     """Adjust resource limits so that `limits` and `requests` are consistent with each other.
 
     Args:
@@ -283,21 +283,21 @@ def adjust_limits_and_requests(
         An adjusted (limits, requests) 2-tuple.
 
     >>> adjust_limits_and_requests({}, {})
-    ({}, {})
+    ResourceRequirements(limits={}, requests={})
     >>> adjust_limits_and_requests({"cpu": "1"}, {})
-    ({'cpu': '1'}, {})
+    ResourceRequirements(limits={'cpu': '1'}, requests={})
     >>> adjust_limits_and_requests({"cpu": "1"}, {"cpu": "2"}, True)
-    ({'cpu': '2'}, {'cpu': '2'})
+    ResourceRequirements(limits={'cpu': '2'}, requests={'cpu': '2'})
     >>> adjust_limits_and_requests({"cpu": "1"}, {"cpu": "2"}, False)
-    ({'cpu': '1'}, {'cpu': '1'})
+    ResourceRequirements(limits={'cpu': '1'}, requests={'cpu': '1'})
     >>> adjust_limits_and_requests({"cpu": "1"}, {"memory": "1G"}, True)
-    ({'cpu': '1'}, {'memory': '1G'})
+    ResourceRequirements(limits={'cpu': '1'}, requests={'memory': '1G'})
     >>> adjust_limits_and_requests({"cpu": "1"}, {"memory": "1G"}, False)
-    ({'cpu': '1'}, {'memory': '1G'})
+    ResourceRequirements(limits={'cpu': '1'}, requests={'memory': '1G'})
     >>> adjust_limits_and_requests({"cpu": "1", "memory": "500M"}, {"memory": "1G"}, True)
-    ({'cpu': '1', 'memory': '1000000000'}, {'memory': '1G'})
+    ResourceRequirements(limits={'cpu': '1', 'memory': '1000000000'}, requests={'memory': '1G'})
     >>> adjust_limits_and_requests({"cpu": "1", "memory": "500M"}, {"memory": "1G"}, False)
-    ({'cpu': '1', 'memory': '500M'}, {'memory': '500000000'})
+    ResourceRequirements(limits={'cpu': '1', 'memory': '500M'}, requests={'memory': '500000000'})
 
     # >>> adjust_limits_and_requests({"custom-resource": "1"}, {"custom-resource": "2"}, False)
     # ({'custom-resource': '1'}, {'custom-resource': '1'})
@@ -333,7 +333,11 @@ def adjust_limits_and_requests(
             .rstrip(".")
         )
 
-    return (adjusted, fixed) if adhere_to_requests else (fixed, adjusted)
+    return (
+        ResourceRequirements(limits=adjusted, requests=fixed)
+        if adhere_to_requests
+        else ResourceRequirements(limits=fixed, requests=adjusted)
+    )
 
 
 def is_valid_spec(spec: Optional[ResourceSpecDict], debug=False) -> bool:  # noqa: C901
