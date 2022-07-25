@@ -6,9 +6,9 @@ from unittest.mock import Mock
 
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
+    adjust_resource_requirements,
     is_valid_spec,
     sanitize_resource_spec_dict,
-    adjust_limits_and_requests,
 )
 from ops.charm import CharmBase
 from ops.testing import Harness
@@ -23,7 +23,7 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.resources_patch = KubernetesComputeResourcesPatch(
                 self,
                 "placeholder",
-                resource_reqs_func=lambda: adjust_limits_and_requests(None, None),
+                resource_reqs_func=lambda: adjust_resource_requirements(None, None),
             )
             self.framework.observe(self.resources_patch.on.patch_failed, self._patch_failed)
             self.patch_failed_counter = 0

@@ -8,7 +8,7 @@
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     K8sResourcePatchFailedEvent,
     KubernetesComputeResourcesPatch,
-    adjust_limits_and_requests,
+    adjust_resource_requirements,
 )
 from ops.charm import CharmBase
 from ops.main import main
@@ -42,7 +42,7 @@ class ObservabilityLibsCharm(CharmBase):
             cpu=self.model.config.get("cpu"),
             memory=self.model.config.get("memory"),
         )
-        return adjust_limits_and_requests(resource_limit, None)
+        return adjust_resource_requirements(resource_limit, None)
 
     def _on_resource_patch_failed(self, event: K8sResourcePatchFailedEvent):
         self.unit.status = BlockedStatus(event.message)
