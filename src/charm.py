@@ -8,7 +8,7 @@
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     K8sResourcePatchFailedEvent,
     KubernetesComputeResourcesPatch,
-    ResourceSpecDict,
+    adjust_limits_and_requests,
 )
 from ops.charm import CharmBase
 from ops.main import main
@@ -26,8 +26,7 @@ class ObservabilityLibsCharm(CharmBase):
         self.resources_patch = KubernetesComputeResourcesPatch(
             self,
             self._container_name,
-            limits_func=lambda: self._resource_spec_from_config(),
-            requests_func=lambda: self._resource_spec_from_config(),
+            resource_reqs_func=lambda: self._resource_spec_from_config(),
         )
         self.framework.observe(
             self.resources_patch.on.patch_failed, self._on_resource_patch_failed
@@ -39,11 +38,11 @@ class ObservabilityLibsCharm(CharmBase):
         # self.framework.observe(self.on.start, self._configure)
 
     def _resource_spec_from_config(self):
-        resource_limit = ResourceSpecDict(
+        resource_limit = dict(
             cpu=self.model.config.get("cpu"),
             memory=self.model.config.get("memory"),
         )
-        return resource_limit
+        return adjust_limits_and_requests(resource_limit, None)
 
     def _on_resource_patch_failed(self, event: K8sResourcePatchFailedEvent):
         self.unit.status = BlockedStatus(event.message)

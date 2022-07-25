@@ -8,6 +8,7 @@ from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     is_valid_spec,
     sanitize_resource_spec_dict,
+    adjust_limits_and_requests,
 )
 from ops.charm import CharmBase
 from ops.testing import Harness
@@ -22,8 +23,7 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.resources_patch = KubernetesComputeResourcesPatch(
                 self,
                 "placeholder",
-                limits_func=lambda: None,
-                requests_func=lambda: None,
+                resource_reqs_func=lambda: adjust_limits_and_requests(None, None),
             )
             self.framework.observe(self.resources_patch.on.patch_failed, self._patch_failed)
             self.patch_failed_counter = 0
@@ -86,8 +86,8 @@ class TestResourceSpecDictValidation(unittest.TestCase):
     def test_sanitize_resource_spec_dict(self):
         self.assertEqual(None, sanitize_resource_spec_dict(None))
         self.assertEqual({}, sanitize_resource_spec_dict({}))
-        self.assertEqual({"bad": "combo"}, sanitize_resource_spec_dict({"bad": "combo"}))  # type: ignore
-        self.assertEqual({"cpu": 1}, sanitize_resource_spec_dict({"cpu": 1}))  # type: ignore
+        self.assertEqual({"bad": "combo"}, sanitize_resource_spec_dict({"bad": "combo"}))
+        self.assertEqual({"cpu": 1}, sanitize_resource_spec_dict({"cpu": 1}))
         self.assertEqual({"cpu": "1"}, sanitize_resource_spec_dict({"cpu": "1"}))
         self.assertEqual({"memory": "858993460"}, sanitize_resource_spec_dict({"memory": "0.8Gi"}))
 
@@ -99,4 +99,4 @@ class TestResourceSpecDictValidation(unittest.TestCase):
         self.assertTrue(is_valid_spec({"memory": "0.8Gi"}))
         self.assertTrue(is_valid_spec({"cpu": None, "memory": None}))
 
-        self.assertFalse(is_valid_spec({"bad": "combo"}))  # type: ignore
+        self.assertFalse(is_valid_spec({"bad": "combo"}))

@@ -93,12 +93,17 @@ def setUp(self, *unused):
     self.harness = Harness(SomeCharm)
     # ...
 ```
+
+References:
+- https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+- https://gtsystem.github.io/lightkube-models/1.23/models/core_v1/#resourcerequirements
 """
+
 import decimal
 import logging
 from decimal import Decimal
 from math import ceil, floor
-from typing import Callable, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from lightkube import ApiError, Client
 from lightkube.core import exceptions
@@ -129,145 +134,132 @@ LIBAPI = 0
 LIBPATCH = 1
 
 
-class ResourceSpecDict(TypedDict, total=False):
-    """A dict representing a K8s resource limit.
-
-    See:
-    - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-    - https://gtsystem.github.io/lightkube-models/1.23/models/core_v1/#resourcerequirements
-    """
-
-    cpu: Optional[str]
-    memory: Optional[str]
-
-
 _Decimal = Union[Decimal, float, str, int]  # types that are potentially convertible to Decimal
 
 
-def ray_hopper(x: _Decimal, a1: _Decimal, a2: _Decimal, x0: _Decimal) -> Decimal:
-    """A monotone ray hopper.
-
-    For example, this could model the thrust of a hypothetical multi-stage rocket engine, as a
-    function of time.
-
-    Args:
-        x: the value for which to calculate the function.
-        a1: the slope of the first ray.
-        a2: the slope of the second ray; must be a1 > a2.
-        x0: the crossover point from the first ray (a1) to the second ray (a2); must be x0 > 0.
-
-    Returns:
-        A linear piecewise-continuous function of x given two "rays", y = a1*x and y = a2*x,
-        and a crossover point x0, as follows:
-        - x, if 0 <= x <= x0;
-        - a1*x, if x0 < x <= a1/a2*x0;
-        - a2*x, if a1/a2*x0 < x.
-
-    >>> ray_hopper(1000, 1, "0.8", 200)  # take 0.8 * 1000
-    Decimal('800.0')
-    >>> ray_hopper(260, 1, "0.8", 200)  # take 0.8 * 260 (input value still > default / 0.8)
-    Decimal('208.0')
-    >>> ray_hopper(250, 1, "0.8", 200)  # take the default, 200 (input value <= default / 0.8)
-    Decimal('200')
-    >>> ray_hopper(200, 1, "0.8", 200)
-    Decimal('200')
-    >>> ray_hopper(150, 1, "0.8", 200)  # return the input value (input value < default)
-    Decimal('150')
-    """
-    try:
-        a1 = Decimal(a1)
-        a2 = Decimal(a2)
-        x = Decimal(x)
-        x0 = Decimal(x0)
-    except ArithmeticError:
-        raise ValueError("Invalid argument(s): all args must be (convertible to) decimal.")
-
-    if any(arg < 0 for arg in [x, a1, a2, x0]):
-        raise ValueError("Invalid argument(s): all args must be greater than 0.")
-    if a1 <= a2:
-        raise ValueError("Invalid argument: must satisfy a1 > a2.")
-
-    if x <= x0:
-        return a1 * x
-
-    a1x0 = a1 * x0
-    if x <= a1x0 / a2:
-        return a1x0
-
-    return a2 * x
-
-
-def limits_to_requests_scaled(
-    resource_limits: ResourceSpecDict, default_requests: ResourceSpecDict, scaling_factor: _Decimal
-) -> ResourceSpecDict:
-    """A helper function for calculating "requests" from a "limits" dict using a scaling factor.
-
-    With this function:
-    - When the "limits" portion is high enough, the "requests" portion is scaled down
-      proportionally, leaving some room for bursts.
-    - When the "limits" portion is too low, no scaling takes place and the requests equals the
-      limits.
-
-    Args:
-        resource_limits: A dictionary representation of K8s resource limits
-        default_requests: The default requests values to use if a limits value is not given. This
-            would also be used as the crossover point from requests = limits to the scaled limits.
-            For example, we can set the "requests" portion of the resource limits to a sensible
-            value, while keeping the "limits" portion unspecified.
-        scaling_factor: A scaling factor used to calculate the requests value from the limits
-            value. The scaling factor must satisfy: 0 < scaling_factor < 1.
-
-    Raises:
-        ValueError, if arguments are invalid or out of range.
-
-    Returns:
-        A resource spec dictionary scaled-down by scaling_factor, subject to the "default value"
-         constraint as described above.
-
-    >>> sf = Decimal("0.8")
-    >>> limits_to_requests_scaled({"cpu": "1"}, {"cpu": "200m"}, sf)
-    {'cpu': '0.800'}
-    >>> limits_to_requests_scaled({"cpu": "260m"}, {"cpu": "200m"}, sf)
-    {'cpu': '0.208'}
-    >>> limits_to_requests_scaled({"cpu": "250m"}, {"cpu": "200m"}, sf)
-    {'cpu': '0.200'}
-    >>> limits_to_requests_scaled({"cpu": "200m"}, {"cpu": "200m"}, sf)
-    {'cpu': '0.200'}
-    >>> limits_to_requests_scaled({"cpu": "150m"}, {"cpu": "200m"}, sf)
-    {'cpu': '0.150'}
-    """
-    scaling_factor = Decimal(scaling_factor)
-    if not (0 < scaling_factor < 1):
-        raise ValueError("scaling_factor must be in the range (0, 1).")
-
-    if not is_valid_spec(resource_limits):
-        raise ValueError("Invalid limits spec: {}".format(resource_limits))
-    if not is_valid_spec(default_requests):
-        raise ValueError("Invalid default requests spec: {}".format(default_requests))
-
-    resource_limits = sanitize_resource_spec_dict(resource_limits) or {}
-    default_requests = sanitize_resource_spec_dict(default_requests) or {}
-
-    # Construct a "requests" dict from a "limits" dict (user input).
-    # Default "requests" values will be used for any missing key in "limits".
-    requests = {}
-    for k in ResourceSpecDict.__annotations__.keys():
-        if k in default_requests:
-            default = parse_quantity(default_requests[k])  # type: ignore[literal-required]
-            value = (
-                ray_hopper(
-                    parse_quantity(resource_limits[k]), Decimal("1.0"), scaling_factor, default  # type: ignore[literal-required, arg-type]
-                )
-                if k in resource_limits
-                else default
-            )
-            requests[k] = str(value.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP))  # type: ignore[union-attr]
-
-    return ResourceSpecDict(requests)  # type: ignore[misc]
+# def ray_hopper(x: _Decimal, a1: _Decimal, a2: _Decimal, x0: _Decimal) -> Decimal:
+#     """A monotone ray hopper.
+#
+#     For example, this could model the thrust of a hypothetical multi-stage rocket engine, as a
+#     function of time.
+#
+#     Args:
+#         x: the value for which to calculate the function.
+#         a1: the slope of the first ray.
+#         a2: the slope of the second ray; must be a1 > a2.
+#         x0: the crossover point from the first ray (a1) to the second ray (a2); must be x0 > 0.
+#
+#     Returns:
+#         A linear piecewise-continuous function of x given two "rays", y = a1*x and y = a2*x,
+#         and a crossover point x0, as follows:
+#         - x, if 0 <= x <= x0;
+#         - a1*x, if x0 < x <= a1/a2*x0;
+#         - a2*x, if a1/a2*x0 < x.
+#
+#     >>> ray_hopper(1000, 1, "0.8", 200)  # take 0.8 * 1000
+#     Decimal('800.0')
+#     >>> ray_hopper(260, 1, "0.8", 200)  # take 0.8 * 260 (input value still > default / 0.8)
+#     Decimal('208.0')
+#     >>> ray_hopper(250, 1, "0.8", 200)  # take the default, 200 (input value <= default / 0.8)
+#     Decimal('200')
+#     >>> ray_hopper(200, 1, "0.8", 200)
+#     Decimal('200')
+#     >>> ray_hopper(150, 1, "0.8", 200)  # return the input value (input value < default)
+#     Decimal('150')
+#     """
+#     try:
+#         a1 = Decimal(a1)
+#         a2 = Decimal(a2)
+#         x = Decimal(x)
+#         x0 = Decimal(x0)
+#     except ArithmeticError:
+#         raise ValueError("Invalid argument(s): all args must be (convertible to) decimal.")
+#
+#     if any(arg < 0 for arg in [x, a1, a2, x0]):
+#         raise ValueError("Invalid argument(s): all args must be greater than 0.")
+#     if a1 <= a2:
+#         raise ValueError("Invalid argument: must satisfy a1 > a2.")
+#
+#     if x <= x0:
+#         return a1 * x
+#
+#     a1x0 = a1 * x0
+#     if x <= a1x0 / a2:
+#         return a1x0
+#
+#     return a2 * x
+#
+#
+# def limits_to_requests_scaled(
+#     resource_limits: dict, default_requests: dict, scaling_factor: _Decimal
+# ) -> dict:
+#     """A helper function for calculating "requests" from a "limits" dict using a scaling factor.
+#
+#     With this function:
+#     - When the "limits" portion is high enough, the "requests" portion is scaled down
+#       proportionally, leaving some room for bursts.
+#     - When the "limits" portion is too low, no scaling takes place and the requests equals the
+#       limits.
+#
+#     Args:
+#         resource_limits: A dictionary representation of K8s resource limits
+#         default_requests: The default requests values to use if a limits value is not given. This
+#             would also be used as the crossover point from requests = limits to the scaled limits.
+#             For example, we can set the "requests" portion of the resource limits to a sensible
+#             value, while keeping the "limits" portion unspecified.
+#         scaling_factor: A scaling factor used to calculate the requests value from the limits
+#             value. The scaling factor must satisfy: 0 < scaling_factor < 1.
+#
+#     Raises:
+#         ValueError, if arguments are invalid or out of range.
+#
+#     Returns:
+#         A resource spec dictionary scaled-down by scaling_factor, subject to the "default value"
+#          constraint as described above.
+#
+#     >>> sf = Decimal("0.8")
+#     >>> limits_to_requests_scaled({"cpu": "1"}, {"cpu": "200m"}, sf)
+#     {'cpu': '0.800'}
+#     >>> limits_to_requests_scaled({"cpu": "260m"}, {"cpu": "200m"}, sf)
+#     {'cpu': '0.208'}
+#     >>> limits_to_requests_scaled({"cpu": "250m"}, {"cpu": "200m"}, sf)
+#     {'cpu': '0.200'}
+#     >>> limits_to_requests_scaled({"cpu": "200m"}, {"cpu": "200m"}, sf)
+#     {'cpu': '0.200'}
+#     >>> limits_to_requests_scaled({"cpu": "150m"}, {"cpu": "200m"}, sf)
+#     {'cpu': '0.150'}
+#     """
+#     scaling_factor = Decimal(scaling_factor)
+#     if not (0 < scaling_factor < 1):
+#         raise ValueError("scaling_factor must be in the range (0, 1).")
+#
+#     if not is_valid_spec(resource_limits):
+#         raise ValueError("Invalid limits spec: {}".format(resource_limits))
+#     if not is_valid_spec(default_requests):
+#         raise ValueError("Invalid default requests spec: {}".format(default_requests))
+#
+#     resource_limits = sanitize_resource_spec_dict(resource_limits) or {}
+#     default_requests = sanitize_resource_spec_dict(default_requests) or {}
+#
+#     # Construct a "requests" dict from a "limits" dict (user input).
+#     # Default "requests" values will be used for any missing key in "limits".
+#     requests = {}
+#     for k in default_requests:
+#         default = parse_quantity(default_requests[k])
+#         value = (
+#             ray_hopper(
+#                 parse_quantity(resource_limits[k]), Decimal("1.0"), scaling_factor, default  # type: ignore[arg-type]
+#             )
+#             if k in resource_limits
+#             else default
+#         )
+#         requests[k] = str(value.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP))  # type: ignore[union-attr]
+#
+#     return requests
 
 
 def adjust_limits_and_requests(
-    limits: ResourceSpecDict, requests: ResourceSpecDict, adhere_to_requests: bool = True
+    limits: Optional[dict], requests: Optional[dict], adhere_to_requests: bool = True
 ) -> ResourceRequirements:
     """Adjust resource limits so that `limits` and `requests` are consistent with each other.
 
@@ -326,8 +318,8 @@ def adjust_limits_and_requests(
             # dict. Keep the "adjusted" value as is
             continue
 
-        adjusted_value = func(parse_quantity(fixed[k]), parse_quantity(adjusted[k]))  # type: ignore[literal-required, type-var]
-        adjusted[k] = (  # type: ignore[literal-required]
+        adjusted_value = func(parse_quantity(fixed[k]), parse_quantity(adjusted[k]))  # type: ignore[type-var]
+        adjusted[k] = (
             str(adjusted_value.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP))  # type: ignore[union-attr]
             .rstrip("0")
             .rstrip(".")
@@ -340,7 +332,7 @@ def adjust_limits_and_requests(
     )
 
 
-def is_valid_spec(spec: Optional[ResourceSpecDict], debug=False) -> bool:  # noqa: C901
+def is_valid_spec(spec: Optional[dict], debug=False) -> bool:  # noqa: C901
     """Check if the spec dict is valid.
 
     TODO: generally, the keys can be anything, not just cpu and memory. Perhaps user could pass
@@ -354,10 +346,6 @@ def is_valid_spec(spec: Optional[ResourceSpecDict], debug=False) -> bool:  # noq
         return False
 
     for k, v in spec.items():
-        if k not in ResourceSpecDict.__annotations__.keys():
-            if debug:
-                logger.error("Invalid resource spec entry: {%s: %s}.", k, v)
-            return False
         try:
             assert isinstance(v, (str, type(None)))  # for type checker
             pv = parse_quantity(v)
@@ -374,7 +362,7 @@ def is_valid_spec(spec: Optional[ResourceSpecDict], debug=False) -> bool:  # noq
     return True
 
 
-def sanitize_resource_spec_dict(spec: Optional[ResourceSpecDict]) -> Optional[ResourceSpecDict]:
+def sanitize_resource_spec_dict(spec: Optional[dict]) -> Optional[dict]:
     """Fix spec values without altering semantics.
 
     The purpose of this helper function is to correct known issues.
@@ -392,7 +380,7 @@ def sanitize_resource_spec_dict(spec: Optional[ResourceSpecDict]) -> Optional[Re
             # setpoint, the pod will not be scheduled and the charm would be stuck in unknown/lost.
             # This slightly changes the spec semantics compared to lightkube/k8s: a setpoint of
             # `None` would be interpreted here as "no limit".
-            del d[k]  # type: ignore
+            del d[k]
 
     # Round up memory to whole bytes. This is need to avoid K8s errors such as:
     # fractional byte value "858993459200m" (0.8Gi) is invalid, must be an integer
@@ -537,8 +525,7 @@ class KubernetesComputeResourcesPatch(Object):
         charm: CharmBase,
         container_name: str,
         *,
-        limits_func: Callable[[], Optional[ResourceSpecDict]],
-        requests_func: Callable[[], Optional[ResourceSpecDict]],
+        resource_reqs_func: Callable[[], ResourceRequirements],
         refresh_event: Optional[Union[BoundEvent, List[BoundEvent]]] = None,
     ):
         """Constructor for KubernetesComputeResourcesPatch.
@@ -549,18 +536,15 @@ class KubernetesComputeResourcesPatch(Object):
         Args:
             charm: the charm that is instantiating the library.
             container_name: the container for which to apply the resource limits.
-            limits_func: a callable returning a dictionary for `limits` resources; if raises,
-              should only raise ValueError.
-            requests_func: a callable returning a dictionary for `requests` resources; if raises,
-              should only raise ValueError.
+            resource_reqs_func: a callable returning a `ResourceRequirements`; if raises, should
+              only raise ValueError.
             refresh_event: an optional bound event or list of bound events which
                 will be observed to re-apply the patch.
         """
         super().__init__(charm, "{}_{}".format(self.__class__.__name__, container_name))
         self._charm = charm
         self._container_name = container_name
-        self.limits_func = limits_func
-        self.requests_func = requests_func
+        self.resource_reqs_func = resource_reqs_func
         self.patcher = ResourcePatcher(self._namespace, self._app, container_name)
 
         # Ensure this patch is applied during the 'config-changed' event, which is emitted every
@@ -583,8 +567,9 @@ class KubernetesComputeResourcesPatch(Object):
     def _patch(self) -> None:
         """Patch the Kubernetes resources created by Juju to limit cpu or mem."""
         try:
-            limits = self.limits_func()
-            requests = self.requests_func()
+            resource_reqs = self.resource_reqs_func()
+            limits = resource_reqs.limits
+            requests = resource_reqs.requests
         except ValueError as e:
             msg = f"Failed obtaining resource limit spec: {e}"
             logger.error(msg)
@@ -641,8 +626,9 @@ class KubernetesComputeResourcesPatch(Object):
             bool: A boolean indicating if the service patch has been applied and is in effect.
         """
         try:
-            limits = self.limits_func()
-            requests = self.requests_func()
+            resource_reqs = self.resource_reqs_func()
+            limits = resource_reqs.limits
+            requests = resource_reqs.requests
         except ValueError as e:
             msg = f"Failed obtaining resource limit spec: {e}"
             logger.error(msg)
