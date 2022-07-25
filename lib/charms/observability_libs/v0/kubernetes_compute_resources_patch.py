@@ -98,7 +98,7 @@ import decimal
 import logging
 from decimal import Decimal
 from math import ceil, floor
-from typing import Callable, Dict, List, Optional, TypedDict, Union
+from typing import Callable, Dict, List, Optional, Tuple, TypedDict, Union
 
 from lightkube import ApiError, Client
 from lightkube.core import exceptions
@@ -266,8 +266,82 @@ def limits_to_requests_scaled(
     return ResourceSpecDict(requests)  # type: ignore[misc]
 
 
+def adjust_limits_and_requests(
+    limits: ResourceSpecDict, requests: ResourceSpecDict, adhere_to_requests: bool = True
+) -> Tuple[ResourceSpecDict, ResourceSpecDict]:
+    """Adjust resource limits so that `limits` and `requests` are consistent with each other.
+
+    Args:
+        limits: the "limits" portion of the resource spec.
+        requests: the "requests" portion of the resource spec.
+        adhere_to_requests: a flag indicating which portion should be adjusted when "limits" is
+         lower than "requests":
+         - if True, "limits" will be adjusted to max(limits, requests).
+         - if False, "requests" will be adjusted to min(limits, requests).
+
+    Returns:
+        An adjusted (limits, requests) 2-tuple.
+
+    >>> adjust_limits_and_requests({}, {})
+    ({}, {})
+    >>> adjust_limits_and_requests({"cpu": "1"}, {})
+    ({'cpu': '1'}, {})
+    >>> adjust_limits_and_requests({"cpu": "1"}, {"cpu": "2"}, True)
+    ({'cpu': '2'}, {'cpu': '2'})
+    >>> adjust_limits_and_requests({"cpu": "1"}, {"cpu": "2"}, False)
+    ({'cpu': '1'}, {'cpu': '1'})
+    >>> adjust_limits_and_requests({"cpu": "1"}, {"memory": "1G"}, True)
+    ({'cpu': '1'}, {'memory': '1G'})
+    >>> adjust_limits_and_requests({"cpu": "1"}, {"memory": "1G"}, False)
+    ({'cpu': '1'}, {'memory': '1G'})
+    >>> adjust_limits_and_requests({"cpu": "1", "memory": "500M"}, {"memory": "1G"}, True)
+    ({'cpu': '1', 'memory': '1000000000'}, {'memory': '1G'})
+    >>> adjust_limits_and_requests({"cpu": "1", "memory": "500M"}, {"memory": "1G"}, False)
+    ({'cpu': '1', 'memory': '500M'}, {'memory': '500000000'})
+
+    # >>> adjust_limits_and_requests({"custom-resource": "1"}, {"custom-resource": "2"}, False)
+    # ({'custom-resource': '1'}, {'custom-resource': '1'})
+    """
+    if not is_valid_spec(limits):
+        raise ValueError("Invalid limits spec: {}".format(limits))
+    if not is_valid_spec(requests):
+        raise ValueError("Invalid default requests spec: {}".format(requests))
+
+    limits = sanitize_resource_spec_dict(limits) or {}
+    requests = sanitize_resource_spec_dict(requests) or {}
+
+    if adhere_to_requests:
+        # Keep limits fixed when `limits` is too low
+        adjusted, fixed = limits.copy(), requests.copy()
+        func = max
+    else:
+        # Pull down requests when limit is too low
+        fixed, adjusted = limits.copy(), requests.copy()
+        func = min
+
+    # adjusted = {}
+    for k in adjusted:
+        if k not in fixed:
+            # The resource constraint is present in the "adjusted" dict but not in the "fixed"
+            # dict. Keep the "adjusted" value as is
+            continue
+
+        adjusted_value = func(parse_quantity(fixed[k]), parse_quantity(adjusted[k]))  # type: ignore[literal-required, type-var]
+        adjusted[k] = (  # type: ignore[literal-required]
+            str(adjusted_value.quantize(decimal.Decimal("0.001"), rounding=decimal.ROUND_UP))  # type: ignore[union-attr]
+            .rstrip("0")
+            .rstrip(".")
+        )
+
+    return (adjusted, fixed) if adhere_to_requests else (fixed, adjusted)
+
+
 def is_valid_spec(spec: Optional[ResourceSpecDict], debug=False) -> bool:  # noqa: C901
-    """Check if the spec dict is valid."""
+    """Check if the spec dict is valid.
+
+    TODO: generally, the keys can be anything, not just cpu and memory. Perhaps user could pass
+     list of custom allowed keys in addition to the K8s ones?
+    """
     if spec is None:
         return True
     if not isinstance(spec, dict):
