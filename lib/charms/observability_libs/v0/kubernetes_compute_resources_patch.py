@@ -156,19 +156,19 @@ def adjust_resource_requirements(
     >>> adjust_resource_requirements({}, {})
     ResourceRequirements(limits={}, requests={})
     >>> adjust_resource_requirements({"cpu": "1"}, {})
-    ResourceRequirements(limits={'cpu': '1'}, requests={})
+    ResourceRequirements(limits={'cpu': '1'}, requests={'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1"}, {"cpu": "2"}, True)
     ResourceRequirements(limits={'cpu': '2'}, requests={'cpu': '2'})
     >>> adjust_resource_requirements({"cpu": "1"}, {"cpu": "2"}, False)
     ResourceRequirements(limits={'cpu': '1'}, requests={'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1"}, {"memory": "1G"}, True)
-    ResourceRequirements(limits={'cpu': '1'}, requests={'memory': '1G'})
+    ResourceRequirements(limits={'cpu': '1'}, requests={'memory': '1G', 'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1"}, {"memory": "1G"}, False)
-    ResourceRequirements(limits={'cpu': '1'}, requests={'memory': '1G'})
+    ResourceRequirements(limits={'cpu': '1'}, requests={'memory': '1G', 'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1", "memory": "500M"}, {"memory": "1G"}, True)
-    ResourceRequirements(limits={'cpu': '1', 'memory': '1000000000'}, requests={'memory': '1G'})
+    ResourceRequirements(limits={'cpu': '1', 'memory': '1000000000'}, requests={'memory': '1G', 'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1", "memory": "500M"}, {"memory": "1G"}, False)
-    ResourceRequirements(limits={'cpu': '1', 'memory': '500M'}, requests={'memory': '500000000'})
+    ResourceRequirements(limits={'cpu': '1', 'memory': '500M'}, requests={'memory': '500000000', 'cpu': '1'})
     >>> adjust_resource_requirements({"custom-resource": "1"}, {"custom-resource": "2"}, False)
     ResourceRequirements(limits={'custom-resource': '1'}, requests={'custom-resource': '1'})
     """
@@ -180,13 +180,21 @@ def adjust_resource_requirements(
     limits = sanitize_resource_spec_dict(limits) or {}
     requests = sanitize_resource_spec_dict(requests) or {}
 
+    # Make sure we do not modify in-place
+    limits, requests = limits.copy(), requests.copy()
+
+    # Need to copy key-val pairs from "limits" to "requests", if they are not present in
+    # "requests". This replicates K8s behavior:
+    # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers
+    requests.update({k: limits[k] for k in limits if k not in requests})
+
     if adhere_to_requests:
         # Keep limits fixed when `limits` is too low
-        adjusted, fixed = limits.copy(), requests.copy()
+        adjusted, fixed = limits, requests
         func = max
     else:
         # Pull down requests when limit is too low
-        fixed, adjusted = limits.copy(), requests.copy()
+        fixed, adjusted = limits, requests
         func = min
 
     # adjusted = {}
@@ -372,6 +380,7 @@ class ResourcePatcher:
         Returns:
             bool: A boolean indicating if the service patch has been applied and is in effect.
         """
+        logger.info("reqs=%s, templated=%s, actual=%s", resource_reqs, self.get_templated(), self.get_actual(pod_name))
         return self.is_patched(resource_reqs) and equals_canonically(
             resource_reqs, self.get_actual(pod_name)
         )
@@ -513,6 +522,7 @@ class KubernetesComputeResourcesPatch(Object):
             return False
 
         if not is_valid_spec(limits) or not is_valid_spec(requests):
+            logger.error("Invalid resource requirements specs: %s, %s", limits, requests)
             return False
 
         resource_reqs = ResourceRequirements(
