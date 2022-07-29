@@ -10,6 +10,7 @@ from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     adjust_resource_requirements,
 )
+from lightkube.models.core_v1 import ResourceRequirements
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
@@ -37,7 +38,7 @@ class ObservabilityLibsCharm(CharmBase):
         # self.framework.observe(self.on.placeholder_pebble_ready, self._configure)
         # self.framework.observe(self.on.start, self._configure)
 
-    def _resource_spec_from_config(self):
+    def _resource_spec_from_config(self) -> ResourceRequirements:
         resource_limit = dict(
             cpu=self.model.config.get("cpu"),
             memory=self.model.config.get("memory"),
