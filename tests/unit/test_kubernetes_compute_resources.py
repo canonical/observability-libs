@@ -67,6 +67,8 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
     @mock.patch("lightkube.core.client.GenericSyncClient")
     def test_invalid_config_emits_custom_event(self, client_mock):
         self.harness.begin_with_initial_hooks()
+
+        # Test invalid quantity values
         for (cpu, memory) in [
             ("-1", ""),
             ("", "-1Gi"),
@@ -100,3 +102,4 @@ class TestResourceSpecDictValidation(unittest.TestCase):
         self.assertTrue(is_valid_spec({"cpu": None, "memory": None}))
 
         self.assertFalse(is_valid_spec({"bad": "combo"}))
+        self.assertFalse(is_valid_spec({"invalid-key": "1"}))
