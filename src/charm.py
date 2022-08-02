@@ -8,9 +8,9 @@
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     K8sResourcePatchFailedEvent,
     KubernetesComputeResourcesPatch,
+    ResourceRequirements,
     adjust_resource_requirements,
 )
-from lightkube.models.core_v1 import ResourceRequirements
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
@@ -27,7 +27,7 @@ class ObservabilityLibsCharm(CharmBase):
         self.resources_patch = KubernetesComputeResourcesPatch(
             self,
             self._container_name,
-            resource_reqs_func=lambda: self._resource_spec_from_config(),
+            resource_reqs_func=self._resource_spec_from_config,
         )
         self.framework.observe(
             self.resources_patch.on.patch_failed, self._on_resource_patch_failed

@@ -38,9 +38,9 @@ Then, to initialise the library:
 ```python
 # ...
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
-    KubernetesComputeResourcesPatch
+    KubernetesComputeResourcesPatch,
+    ResourceRequirements,
 )
-from lightkube.models.core_v1 import ResourceRequirements
 
 class SomeCharm(CharmBase):
   def __init__(self, *args):
@@ -68,7 +68,7 @@ class SomeCharm(CharmBase):
     self.resources_patch = KubernetesComputeResourcesPatch(
         self,
         "container-name",
-        resource_reqs_func=lambda: self._resource_spec_from_config(),
+        resource_reqs_func=self._resource_spec_from_config,
     )
 
   def _resource_spec_from_config(self) -> ResourceRequirements:
