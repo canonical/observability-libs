@@ -35,7 +35,6 @@ copyright-regexp = "Copyright\\s\\d{4}([-,]\\d{4})*\\s+%(author)s"
 [tool.mypy]
 pretty = true
 python_version = 3.8
-mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/lib:$MYPY_CONFIG_FILE_DIR/tests/unit"
 follow_imports = "normal"
 warn_redundant_casts = true
 warn_unused_ignores = true
@@ -49,9 +48,10 @@ allow_redefinition = true
 
 # Ignore libraries that do not have type hint nor stubs
 [[tool.mypy.overrides]]
-module = ["ops.*", "lightkube.*"]
+module = ["ops.*", "lightkube.*", "pytest_operator.plugin.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
+asyncio_mode = "auto"
