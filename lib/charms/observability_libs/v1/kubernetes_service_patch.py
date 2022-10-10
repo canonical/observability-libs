@@ -130,7 +130,7 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Service
 from lightkube.types import PatchType
 from ops.charm import CharmBase
-from ops.framework import Object, BoundEvent
+from ops.framework import BoundEvent, Object
 
 logger = logging.getLogger(__name__)
 
@@ -159,9 +159,8 @@ class KubernetesServicePatch(Object):
         additional_labels: dict = None,
         additional_selectors: dict = None,
         additional_annotations: dict = None,
-            *,
-            refresh_event: Optional[Union[BoundEvent, List[BoundEvent]]] = None
-
+        *,
+        refresh_event: Optional[Union[BoundEvent, List[BoundEvent]]] = None,
     ):
         """Constructor for KubernetesServicePatch.
 
