@@ -101,7 +101,11 @@ class SomeCharm(CharmBase):
   def __init__(self, *args):
     # ...
     port = ServicePort(int(self.config["charm-config-port"]), name=f"{self.app.name}")
-    self.service_patcher = KubernetesServicePatch(self, [port], refresh_event=self.on.config_changed)
+    self.service_patcher = KubernetesServicePatch(
+        self,
+        [port],
+        refresh_event=self.on.config_changed
+    )
     # ...
 ```
 
