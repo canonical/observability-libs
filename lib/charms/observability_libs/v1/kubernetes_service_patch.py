@@ -89,6 +89,22 @@ class SomeCharm(CharmBase):
     # ...
 ```
 
+Bound with custom events by providing `refresh_event` argument:
+For example, you would like to have a configurable port in your charm and want to apply
+service patch every time charm config is changed.
+
+```python
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from lightkube.models.core_v1 import ServicePort
+
+class SomeCharm(CharmBase):
+  def __init__(self, *args):
+    # ...
+    port = ServicePort(int(self.config["charm-config-port"]), name=f"{self.app.name}")
+    self.service_patcher = KubernetesServicePatch(self, [port], refresh_event=self.on.config_changed)
+    # ...
+```
+
 Additionally, you may wish to use mocks in your charm's unit testing to ensure that the library
 does not try to make any API calls, or open any files during testing that are unlikely to be
 present, and could break your tests. The easiest way to do this is during your test `setUp`:
@@ -105,7 +121,7 @@ def setUp(self, *unused):
 
 import logging
 from types import MethodType
-from typing import List, Literal
+from typing import List, Literal, Optional, Union
 
 from lightkube import ApiError, Client
 from lightkube.core import exceptions
@@ -114,7 +130,7 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Service
 from lightkube.types import PatchType
 from ops.charm import CharmBase
-from ops.framework import Object
+from ops.framework import Object, BoundEvent
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +159,9 @@ class KubernetesServicePatch(Object):
         additional_labels: dict = None,
         additional_selectors: dict = None,
         additional_annotations: dict = None,
+            *,
+            refresh_event: Optional[Union[BoundEvent, List[BoundEvent]]] = None
+
     ):
         """Constructor for KubernetesServicePatch.
 
@@ -158,6 +177,8 @@ class KubernetesServicePatch(Object):
             additional_selectors: Selectors to be added to the kubernetes service (by default only
                 "app.kubernetes.io/name" is set to the service name)
             additional_annotations: Annotations to be added to the kubernetes service.
+            refresh_event: an optional bound event or list of bound events which
+                will be observed to re-apply the patch (eg on port change)
         """
         super().__init__(charm, "kubernetes-service-patch")
         self.charm = charm
@@ -176,6 +197,14 @@ class KubernetesServicePatch(Object):
         # Ensure this patch is applied during the 'install' and 'upgrade-charm' events
         self.framework.observe(charm.on.install, self._patch)
         self.framework.observe(charm.on.upgrade_charm, self._patch)
+
+        # apply user defined events
+        if refresh_event:
+            if not isinstance(refresh_event, list):
+                refresh_event = [refresh_event]
+
+            for evt in refresh_event:
+                self.framework.observe(evt, self._patch)
 
     def _service_object(
         self,
