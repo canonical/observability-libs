@@ -4,6 +4,7 @@ import unittest
 from unittest import mock
 from unittest.mock import Mock
 
+import yaml
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     adjust_resource_requirements,
@@ -12,6 +13,8 @@ from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
 )
 from ops.charm import CharmBase
 from ops.testing import Harness
+
+from tests.unit.helpers import PROJECT_DIR
 
 CL_PATH = "charms.observability_libs.v0.kubernetes_compute_resources_patch.KubernetesComputeResourcesPatch"
 
@@ -32,8 +35,10 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.patch_failed_counter += 1
 
     def setUp(self) -> None:
+        with open(PROJECT_DIR / "config.yaml") as config_file:
+            config = yaml.safe_load(config_file)
         self.harness = Harness(
-            self._TestCharm, meta=open("metadata.yaml"), config=open("config.yaml")
+            self._TestCharm, meta=open(PROJECT_DIR / "metadata.yaml"), config=str(config)
         )
 
     @mock.patch("lightkube.core.client.GenericSyncClient", Mock)
