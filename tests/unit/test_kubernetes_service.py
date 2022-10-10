@@ -40,7 +40,9 @@ class _TestCharm(CharmBase):
         super().__init__(*args)
         svc1 = ServicePort(1234, name="svc1", targetPort=1234)
         svc2 = ServicePort(1235, name="svc2", targetPort=1235)
-        self.service_patch = KubernetesServicePatch(self, [svc1, svc2], refresh_event=self.on.config_changed)
+        self.service_patch = KubernetesServicePatch(
+            self, [svc1, svc2], refresh_event=self.on.config_changed
+        )
 
 
 class _TestCharmCustomServiceName(CharmBase):
@@ -360,7 +362,7 @@ class TestK8sServicePatch(unittest.TestCase):
         self.assertEqual(service_patch.service, expected_service)
 
     def test_custom_event_is_fired(self):
-        """Check that events provided via refresh_event are called"""
+        """Check that events provided via refresh_event are called."""
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
             charm.on.config_changed.emit()
