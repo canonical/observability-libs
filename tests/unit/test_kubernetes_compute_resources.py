@@ -5,7 +5,6 @@ from unittest import mock
 from unittest.mock import Mock
 
 import yaml
-
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     adjust_resource_requirements,
