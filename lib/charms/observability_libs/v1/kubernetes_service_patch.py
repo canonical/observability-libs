@@ -181,7 +181,8 @@ class KubernetesServicePatch(Object):
                 "app.kubernetes.io/name" is set to the service name)
             additional_annotations: Annotations to be added to the kubernetes service.
             refresh_event: an optional bound event or list of bound events which
-                will be observed to re-apply the patch (eg on port change)
+                will be observed to re-apply the patch (e.g. on port change).
+                The `install` and `upgrade-charm` events would be observed regardless.
         """
         super().__init__(charm, "kubernetes-service-patch")
         self.charm = charm
