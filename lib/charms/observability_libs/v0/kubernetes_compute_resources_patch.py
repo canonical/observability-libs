@@ -403,9 +403,9 @@ class ResourcePatcher:
 
     def _handle_pod_termination(self, *args) -> None:
         logger.debug(
-            "KubernetesComputeResourcesPatch was interrupted by a SIGTERM, likely due to "
+            "KubernetesComputeResourcesPatch's signal handler caught a SIGTERM, likely due to "
             "pod termination during execution of `config-changed`. Exiting gracefully. "
-            "The hook will be re-run"
+            "The hook being executed will be re-run by Juju once the pod is re-scheduled."
         )
         sys.exit(0)
 
@@ -420,7 +420,7 @@ class ResourcePatcher:
         # Juju tries to send a SIGTERM to the CRI to exit gracefully when in CAAS mode, then
         # the hook is re-executed, so we can "safely" trap it here without causing a hook
         # failure if there is a race, and config-changed will retry (after it is applied and
-        # the pod is rescheduled
+        # the pod is rescheduled)
         signal.signal(signal.SIGTERM, self._handle_pod_termination)
 
         self.client.patch(
