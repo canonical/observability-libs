@@ -62,7 +62,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 # File path where metrics endpoint change data is written for exchange
 # between the discovery process and the materialised event.
@@ -200,7 +200,22 @@ def main():
 
     for change, entity in client.watch(Pod, namespace="*", labels=labels):
         meta = entity.metadata
-        payload = {"change": change, "namespace": meta.namespace, "name": meta.name}
+        metrics_path = ""
+        if entity.metadata.annotations.get("prometheus.io/path", ""):
+            metrics_path = entity.metadata.annotations.get("prometheus.io/path", "")
+
+        target_ports = []
+        for c in filter(lambda c: c.ports is not None, entity.spec.containers):
+            for p in filter(lambda p: p.name == "metrics", c.ports):
+                target_ports.append("*:{}".format(p.containerPort))
+
+        payload = {
+            "change": change,
+            "namespace": meta.namespace,
+            "name": meta.name,
+            "path": metrics_path,
+            "targets": target_ports or ["*:80"],
+        }
 
         write_payload(payload)
         dispatch(run_cmd, unit, charm_dir)
