@@ -181,7 +181,10 @@ class JujuTopology:
         )
 
     def as_dict(
-        self, *, remapped_keys: Optional[Dict[str, str]] = None, excluded_keys: Optional[List[str]] = None
+        self,
+        *,
+        remapped_keys: Optional[Dict[str, str]] = None,
+        excluded_keys: Optional[List[str]] = None,
     ) -> OrderedDict:
         """Format the topology information into an ordered dict.
 
