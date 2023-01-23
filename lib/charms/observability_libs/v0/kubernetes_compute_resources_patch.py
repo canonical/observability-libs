@@ -170,13 +170,11 @@ def adjust_resource_requirements(
     >>> adjust_resource_requirements({"cpu": "1"}, {"memory": "1G"}, False)
     ResourceRequirements(claims=None, limits={'cpu': '1'}, requests={'memory': '1G', 'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1", "memory": "1"}, {"memory": "2"}, True)
-    ResourceRequirements(
-        claims=None, limits={'cpu': '1', 'memory': '2'}, requests={'memory': '2', 'cpu': '1'}
-    )
+    ResourceRequirements(\
+claims=None, limits={'cpu': '1', 'memory': '2'}, requests={'memory': '2', 'cpu': '1'})
     >>> adjust_resource_requirements({"cpu": "1", "memory": "1"}, {"memory": "1G"}, False)
-    ResourceRequirements(
-        claims=None, limits={'cpu': '1', 'memory': '1'}, requests={'memory': '1', 'cpu': '1'}
-    )
+    ResourceRequirements(\
+claims=None, limits={'cpu': '1', 'memory': '1'}, requests={'memory': '1', 'cpu': '1'})
     >>> adjust_resource_requirements({"custom-resource": "1"}, {"custom-resource": "2"}, False)
     Traceback (most recent call last):
       ...
