@@ -15,7 +15,6 @@ class JujuTopologyCharm(CharmBase):
 
 class TestJujuTopologyLib(unittest.TestCase):
     def setUp(self):
-        ops.testing.SIMULATE_CAN_CONNECT = True
         self.input = OrderedDict(
             [
                 ("model", "some-model"),
