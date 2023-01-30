@@ -40,7 +40,9 @@ class _TestCharm(CharmBase):
         super().__init__(*args)
         svc1 = ServicePort(1234, name="svc1", targetPort=1234)
         svc2 = ServicePort(1235, name="svc2", targetPort=1235)
-        self.service_patch = KubernetesServicePatch(self, [svc1, svc2])
+        self.service_patch = KubernetesServicePatch(
+            self, [svc1, svc2], refresh_event=self.on.config_changed
+        )
 
 
 class _TestCharmCustomServiceName(CharmBase):
@@ -359,6 +361,13 @@ class TestK8sServicePatch(unittest.TestCase):
 
         self.assertEqual(service_patch.service, expected_service)
 
+    def test_custom_event_is_fired(self):
+        """Check that events provided via refresh_event are called."""
+        charm = self.harness.charm
+        with mock.patch(f"{CL_PATH}._patch") as patch:
+            charm.on.config_changed.emit()
+            self.assertEqual(patch.call_count, 1)
+
     def test_given_initialized_charm_when_install_event_then_event_listener_is_attached(self):
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
@@ -453,3 +462,41 @@ class TestK8sServicePatch(unittest.TestCase):
         self.assertEqual(self.harness.charm.service_patch._app, "test-charm")
         self.assertEqual(self.harness.charm.service_patch._namespace, "test")
         mock.assert_called_with("/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r")
+
+    @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch(f"{CL_PATH}._namespace", "test")
+    @patch(f"{MOD_PATH}.Client")
+    def test_is_patched_k8s_service_with_alternative_name(self, client):
+        charm = self.custom_service_name_harness.charm
+        self.harness.set_leader(False)
+
+        client.return_value = client
+        client.get.side_effect = _FakeApiError(404)
+        self.assertEqual(charm.custom_service_name_service_patch.is_patched(), False)
+
+    @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch(f"{CL_PATH}._namespace", "test")
+    @patch(f"{MOD_PATH}.Client")
+    def test_is_patched_k8s_service_api_error_with_default_name(self, client):
+        self.harness.set_leader(False)
+
+        client.return_value = client
+        client.get.side_effect = _FakeApiError(404)
+        with self.assertLogs(MOD_PATH) as logs:
+            with self.assertRaises(_FakeApiError):
+                self.harness.charm.service_patch.is_patched()
+            self.assertIn("Kubernetes service get failed: broken", ";".join(logs.output))
+
+    @patch(f"{MOD_PATH}.ApiError", _FakeApiError)
+    @patch(f"{CL_PATH}._namespace", "test")
+    @patch(f"{MOD_PATH}.Client")
+    def test_is_patched_k8s_service_api_error_not_404(self, client):
+        charm = self.custom_service_name_harness.charm
+        self.harness.set_leader(False)
+
+        client.return_value = client
+        client.get.side_effect = _FakeApiError(500)
+        with self.assertLogs(MOD_PATH) as logs:
+            with self.assertRaises(_FakeApiError):
+                charm.custom_service_name_service_patch.is_patched()
+            self.assertIn("Kubernetes service get failed: broken", ";".join(logs.output))
