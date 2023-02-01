@@ -19,6 +19,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
     "Development Status :: 4 - Beta",
+    "Typing :: Typed",
 ]
 
 [project.urls]
