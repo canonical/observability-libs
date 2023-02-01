@@ -25,3 +25,6 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/canonical/observability-libs/"
 "Bug Tracker" = "https://github.com/canonical/observability-libs/issues"
+
+[package]
+include = ["py.typed"]
