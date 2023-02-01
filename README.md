@@ -3,7 +3,7 @@
 ## Description
 
 Observability Libs is a placeholder charm that is used to provide a home for [charm libraries] that
-are used for the development of charms deployed as part of the LMA Light [bundle].
+are used for the development of charms deployed as part of the COS Lite [bundle].
 
 ## Usage
 
@@ -33,6 +33,6 @@ charm following best practice guidelines, and `CONTRIBUTING.md` for developer gu
 
 [KubernetesServicePatch]: https://charmhub.io/observability-libs/libraries/kubernetes_service_patch
 [KubernetesComputeResourcesPatch]: https://charmhub.io/observability-libs/libraries/kubernetes_compute_resources_patch
-[bundle]: https://charmhub.io/lma-light
+[bundle]: https://charmhub.io/cos-lite
 [charm libraries]: https://juju.is/docs/sdk/libraries
 [JujuTopology]: https://charmhub.io/observability-libs/libraries/juju_topology

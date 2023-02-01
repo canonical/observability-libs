@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jo11y"
+version = "0.0.1"
+authors = [
+  { name="sed-i", email="82407168+sed-i@users.noreply.github.com" },
+]
+description = "Utils for COS Lite charms"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Utilities",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Development Status :: 4 - Beta",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/canonical/observability-libs/"
+"Bug Tracker" = "https://github.com/canonical/observability-libs/issues"
