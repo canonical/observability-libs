@@ -74,7 +74,7 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
         self.harness.begin_with_initial_hooks()
 
         # Test invalid quantity values
-        for (cpu, memory) in [
+        for cpu, memory in [
             ("-1", ""),
             ("", "-1Gi"),
             ("-1", "1Gi"),
