@@ -15,7 +15,6 @@ from ops.testing import Harness
 
 
 class _TestCharm(CharmBase):
-
     on = MetricsEndpointChangeCharmEvents()
 
     def __init__(self, *args):
