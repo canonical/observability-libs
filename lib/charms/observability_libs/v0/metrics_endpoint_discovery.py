@@ -140,8 +140,8 @@ class MetricsEndpointObserver(Object):
             new_env.pop("JUJU_CONTEXT_ID")
 
         tool_prefix = f"/var/lib/juju/tools/{self.unit_tag}"
-        if juju_run_path := Path(tool_prefix, "juju-run").exists():
-            tool_path = juju_run_path
+        if Path(tool_prefix, "juju-run").exists():
+            tool_path = Path(tool_prefix, "juju-run")
         else:
             tool_path = Path("/usr/bin/juju-exec")
 

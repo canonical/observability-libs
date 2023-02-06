@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import unittest
+from unittest.mock import patch
 
 from charms.observability_libs.v0.metrics_endpoint_discovery import (
     MetricsEndpointChangeCharmEvents,
@@ -31,6 +32,10 @@ class TestMetricsEndpointDiscovery(unittest.TestCase):
     def setUp(self) -> None:
         self.harness = Harness(_TestCharm, meta="name: test-charm")
 
+    @patch(
+        "charms.observability_libs.v0.metrics_endpoint_discovery.MetricsEndpointObserver.start_observer",
+        lambda x: True,
+    )
     def test_metrics_endpoint_change_event_emitted_handled(self):
         self.harness.begin()
         charm = self.harness.charm
