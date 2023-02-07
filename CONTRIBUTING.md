@@ -1,5 +1,13 @@
 # Contributing to observability-libs
 
+![GitHub License](https://img.shields.io/github/license/canonical/observability-libs)
+![GitHub Commit Activity](https://img.shields.io/github/commit-activity/y/canonical/observability-libs)
+![GitHub Lines of Code](https://img.shields.io/tokei/lines/github/canonical/observability-libs)
+![GitHub Issues](https://img.shields.io/github/issues/canonical/observability-libs)
+![GitHub PRs](https://img.shields.io/github/issues-pr/canonical/observability-libs)
+![GitHub Contributors](https://img.shields.io/github/contributors/canonical/observability-libs)
+![GitHub Watchers](https://img.shields.io/github/watchers/canonical/observability-libs?style=social)
+
 ## Bugs and pull requests
 
 - Generally, before developing enhancements to this charm, you should consider explaining your use
