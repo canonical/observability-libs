@@ -1,5 +1,10 @@
 # Observability Libs
 
+[![CharmHub Badge](https://charmhub.io/observability-libs/badge.svg)](https://charmhub.io/observability-libs)
+[![Release to Edge](https://github.com/canonical/observability-libs/actions/workflows/release-edge.yaml/badge.svg)](https://github.com/canonical/observability-libs/actions/workflows/release-edge.yaml)
+[![Release Libraries](https://github.com/canonical/observability-libs/actions/workflows/release-libs.yaml/badge.svg)](https://github.com/canonical/observability-libs/actions/workflows/release-libs.yaml)
+[![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
+
 ## Description
 
 Observability Libs is a placeholder charm that is used to provide a home for [charm libraries] that
