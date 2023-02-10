@@ -7,7 +7,7 @@ import ops
 from ops.charm import CharmBase
 from ops.testing import Harness
 
-from jo11y.juju_topology import JujuTopology
+from cosl.juju_topology import JujuTopology
 
 
 class JujuTopologyCharm(CharmBase):

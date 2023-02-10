@@ -9,7 +9,7 @@ from pathlib import PosixPath
 from ops.charm import CharmBase
 from ops.testing import Harness
 
-from jo11y import CosTool
+from cosl import CosTool
 
 
 # noqa: E302

@@ -90,8 +90,8 @@ class InvalidUUIDError(Exception):
 class JujuTopology:
     """JujuTopology is used for storing, generating and formatting juju topology information.
 
-    DEPRECATED: This class is deprecated. Use `pip install jo11y` and
-    `from jo11y.juju_topology import JujuTopology` instead.
+    DEPRECATED: This class is deprecated. Use `pip install cosl` and
+    `from cosl.juju_topology import JujuTopology` instead.
     """
 
     def __init__(
@@ -121,7 +121,7 @@ class JujuTopology:
             charm_name: name of charm as a string
         """
         warnings.warn(
-            "observability_libs.v0.juju_topology is deprecated. Use `pip install jo11y` instead",
+            "observability_libs.v0.juju_topology is deprecated. Use `pip install cosl` instead",
             category=DeprecationWarning,
         )
 

@@ -4,7 +4,7 @@ import unittest
 import uuid
 from collections import OrderedDict
 
-from jo11y.juju_topology import InvalidUUIDError, JujuTopology
+from cosl.juju_topology import InvalidUUIDError, JujuTopology
 
 
 class TestJujuTopology(unittest.TestCase):

@@ -1,2 +1,2 @@
-# Jolly (styled: jo11y)
+# cosl
 Utils for COS Lite charms.
