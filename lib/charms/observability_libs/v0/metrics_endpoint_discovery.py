@@ -45,12 +45,13 @@ import os
 import signal
 import subprocess
 import sys
+from pathlib import Path
 from typing import Dict, Iterable
 
 from lightkube import Client
 from lightkube.resources.core_v1 import Pod
 from ops.charm import CharmBase, CharmEvents
-from ops.framework import EventBase, EventSource, Object
+from ops.framework import EventBase, EventSource, Object, StoredState
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 # File path where metrics endpoint change data is written for exchange
 # between the discovery process and the materialised event.
@@ -113,6 +114,9 @@ class MetricsEndpointObserver(Object):
     Observed endpoint changes cause :class"`MetricsEndpointChangeEvent` to be emitted.
     """
 
+    # Yes, we need this so we can track it between events
+    _stored = StoredState()
+
     def __init__(self, charm: CharmBase, labels: Dict[str, Iterable]):
         """Constructor for MetricsEndpointObserver.
 
@@ -121,17 +125,17 @@ class MetricsEndpointObserver(Object):
             labels: dictionary of label/value to be observed for changing metrics endpoints.
         """
         super().__init__(charm, "metrics-endpoint-observer")
+        self._stored.set_default(observer_pid=0)
 
         self._charm = charm
-        self._observer_pid = 0
+        self._observer_pid = self._stored.observer_pid
 
         self._labels = labels
+        self.start_observer()
 
     def start_observer(self):
         """Start the metrics endpoint observer running in a new process."""
         self.stop_observer()
-
-        logging.info("Starting metrics endpoint observer process")
 
         # We need to trick Juju into thinking that we are not running
         # in a hook context, as Juju will disallow use of juju-run.
@@ -139,30 +143,36 @@ class MetricsEndpointObserver(Object):
         if "JUJU_CONTEXT_ID" in new_env:
             new_env.pop("JUJU_CONTEXT_ID")
 
+        tool_prefix = "/usr/bin"
+        if Path(tool_prefix, "juju-run").exists():
+            tool_path = Path(tool_prefix, "juju-run")
+        else:
+            tool_path = Path(tool_prefix, "juju-exec")
+
         pid = subprocess.Popen(
             [
                 "/usr/bin/python3",
                 "lib/charms/observability_libs/v{}/metrics_endpoint_discovery.py".format(LIBAPI),
                 json.dumps(self._labels),
-                "/var/lib/juju/tools/{}/juju-run".format(self.unit_tag),
+                str(tool_path),
                 self._charm.unit.name,
                 self._charm.charm_dir,
             ],
             stdout=open(LOG_FILE_PATH, "a"),
             stderr=subprocess.STDOUT,
+            start_new_session=True,
             env=new_env,
         ).pid
 
-        self._observer_pid = pid
-        logging.info("Started metrics endopint observer process with PID {}".format(pid))
+        self._observer_pid = pid  # type: ignore
 
     def stop_observer(self):
         """Stop the running observer process if we have previously started it."""
-        if not self._observer_pid:
+        if not self._observer_pid:  # type: ignore
             return
 
         try:
-            os.kill(self._observer_pid, signal.SIGINT)
+            os.kill(self._observer_pid, signal.SIGINT)  # type: ignore
             msg = "Stopped running metrics endpoint observer process with PID {}"
             logging.info(msg.format(self._observer_pid))
         except OSError:
@@ -199,6 +209,9 @@ def main():
     labels = json.loads(labels)
 
     for change, entity in client.watch(Pod, namespace="*", labels=labels):
+        if Path(PAYLOAD_FILE_PATH).exists():
+            dispatch(run_cmd, unit, charm_dir)
+            Path(PAYLOAD_FILE_PATH).unlink()
         meta = entity.metadata
         metrics_path = ""
         if entity.metadata.annotations.get("prometheus.io/path", ""):
