@@ -4,9 +4,10 @@ import unittest
 from collections import OrderedDict
 
 import ops
-from jo11y.juju_topology import JujuTopology
 from ops.charm import CharmBase
 from ops.testing import Harness
+
+from cosl.juju_topology import JujuTopology
 
 
 class JujuTopologyCharm(CharmBase):
