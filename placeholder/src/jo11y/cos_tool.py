@@ -37,7 +37,7 @@ class CosTool:
                 self._disabled = True
         return self._path
 
-    def apply_label_matchers(self, rules: dict, type: str) -> dict:
+    def apply_label_matchers(self, rules) -> dict:
         """Will apply label matchers to the expression of all alerts in all supplied groups."""
         if not self.path:
             return rules
@@ -57,7 +57,7 @@ class CosTool:
                     if label in rule["labels"]:
                         topology[label] = rule["labels"][label]
 
-                rule["expr"] = self.inject_label_matchers(rule["expr"], topology, type)
+                rule["expr"] = self.inject_label_matchers(rule["expr"], topology)
         return rules
 
     def validate_alert_rules(self, rules: dict) -> Tuple[bool, str]:
@@ -68,22 +68,7 @@ class CosTool:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rule_path = Path(tmpdir + "/validate_rule.yaml")
-
-            # Smash "our" rules format into what upstream actually uses, which is more like:
-            #
-            # groups:
-            #   - name: foo
-            #     rules:
-            #       - alert: SomeAlert
-            #         expr: up
-            #       - alert: OtherAlert
-            #         expr: up
-            transformed_rules = {"groups": []}  # type: ignore
-            for rule in rules["groups"]:
-                transformed = {"name": str(uuid.uuid4()), "rules": [rule]}
-                transformed_rules["groups"].append(transformed)
-
-            rule_path.write_text(yaml.dump(transformed_rules))
+            rule_path.write_text(yaml.dump(rules))
 
             args = [str(self.path), "validate", str(rule_path)]
             # noinspection PyBroadException
@@ -100,26 +85,19 @@ class CosTool:
                     ]
                 )
 
-    def inject_label_matchers(self, expression: str, topology: dict, type: str) -> str:
+    def inject_label_matchers(self, expression, topology) -> str:
         """Add label matchers to an expression."""
         if not topology:
             return expression
         if not self.path:
             logger.debug("`cos-tool` unavailable. Leaving expression unchanged: %s", expression)
             return expression
-        args = [str(self.path), "--format", type, "transform"]
-
-        variable_topology = {k: "${}".format(k) for k in topology.keys()}
+        args = [str(self.path), "transform"]
         args.extend(
-            [
-                "--label-matcher={}={}".format(key, value)
-                for key, value in variable_topology.items()
-            ]
+            ["--label-matcher={}={}".format(key, value) for key, value in topology.items()]
         )
 
-        # Pass a leading "--" so expressions with a negation or subtraction aren't interpreted as
-        # flags
-        args.extend(["--", "{}".format(expression)])
+        args.extend(["{}".format(expression)])
         # noinspection PyBroadException
         try:
             return self._exec(args)
