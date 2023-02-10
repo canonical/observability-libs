@@ -45,7 +45,6 @@ async def test_build_and_deploy(ops_test: OpsTest, o11y_libs_charm):
         o11y_libs_charm,
         resources=resources,
         application_name=app_name,
-        series="focal",
         trust=True,
     )
 
