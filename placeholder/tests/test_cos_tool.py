@@ -84,7 +84,6 @@ class TestTransformPromQL(unittest.TestCase):
                     }
                 ]
             },
-            type="promql",
         )
         self.assertEqual(output["groups"][0]["expr"], "process_cpu_seconds_total > 0.12")
 
@@ -112,7 +111,6 @@ class TestTransformPromQL(unittest.TestCase):
                     }
                 ]
             },
-            type="promql",
         )
         self.assertEqual(output["groups"][0]["expr"], "process_cpu_seconds_total > 0.12")
 
@@ -120,14 +118,14 @@ class TestTransformPromQL(unittest.TestCase):
     def test_fetches_the_correct_expression(self):
         tool = self.harness.charm.tool
 
-        output = tool.inject_label_matchers("up", {"juju_model": "some_juju_model"}, type="promql")
+        output = tool.inject_label_matchers("up", {"juju_model": "some_juju_model"})
         assert output == 'up{juju_model="some_juju_model"}'
 
     @unittest.mock.patch("platform.machine", lambda: "x86_64")
     def test_handles_comparisons(self):
         tool = self.harness.charm.tool
         output = tool.inject_label_matchers(
-            "up > 1", {"juju_model": "some_juju_model"}, type="promql"
+            "up > 1", {"juju_model": "some_juju_model"},
         )
         assert output == 'up{juju_model="some_juju_model"} > 1'
 
@@ -142,7 +140,6 @@ class TestTransformPromQL(unittest.TestCase):
                 "juju_application": "some_application",
                 "juju_unit": "some_application/1",
             },
-            type="promql",
         )
         assert (
             output == 'up{juju_application="some_application",juju_model="some_juju_model"'
