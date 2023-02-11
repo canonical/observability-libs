@@ -33,10 +33,9 @@ class ObservabilityLibsCharm(CharmBase):
             self.resources_patch.on.patch_failed, self._on_resource_patch_failed
         )
 
-        self._configure()
-        # self.framework.observe(self.on.config_changed, self._configure)
-        # self.framework.observe(self.on.placeholder_pebble_ready, self._configure)
-        # self.framework.observe(self.on.start, self._configure)
+        self.framework.observe(self.on.config_changed, self._configure)
+        self.framework.observe(self.on.placeholder_pebble_ready, self._configure)
+        self.framework.observe(self.on.start, self._configure)
 
     def _resource_spec_from_config(self) -> ResourceRequirements:
         resource_limit = dict(
