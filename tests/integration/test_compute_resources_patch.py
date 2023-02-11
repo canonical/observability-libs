@@ -65,7 +65,8 @@ async def test_default_resource_limits_applied(ops_test: OpsTest):
 async def test_resource_limits_match_config(ops_test: OpsTest, cpu, memory):
     custom_limits = {"cpu": cpu, "memory": memory}
     await ops_test.model.applications[app_name].set_config(custom_limits)
-    await ops_test.model.wait_for_idle(status="active", timeout=resched_timeout)
+    await ops_test.model.wait_for_idle(status="active", timeout=resched_timeout, raise_on_error=False)
+    await ops_test.model.wait_for_idle(status="active")
 
     # Not comparing limits (for now) because the strings may differ (0.9G vs 900M)
     # Comparison is done inside the k8s resource patch lib.
