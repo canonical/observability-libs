@@ -47,7 +47,7 @@ class ObservabilityLibsCharm(CharmBase):
     def _on_resource_patch_failed(self, event: K8sResourcePatchFailedEvent):
         self.unit.status = BlockedStatus(event.message)
 
-    def _configure(self):
+    def _configure(self, _):
         container = self.unit.get_container(self._container_name)
 
         if not self.resources_patch.is_ready():
