@@ -67,16 +67,9 @@ topology = JujuTopology(
 ```
 
 """
-import warnings
 from collections import OrderedDict
 from typing import Dict, List, Optional
 from uuid import UUID
-
-# The unique Charmhub library identifier, never change it
-LIBID = "bced1658f20f49d28b88f61f83c2d232"
-
-LIBAPI = 0
-LIBPATCH = 5
 
 
 class InvalidUUIDError(Exception):
@@ -88,11 +81,7 @@ class InvalidUUIDError(Exception):
 
 
 class JujuTopology:
-    """JujuTopology is used for storing, generating and formatting juju topology information.
-
-    DEPRECATED: This class is deprecated. Use `pip install cosl` and
-    `from cosl.juju_topology import JujuTopology` instead.
-    """
+    """JujuTopology is used for storing, generating and formatting juju topology information."""
 
     def __init__(
         self,
@@ -120,11 +109,6 @@ class JujuTopology:
             unit: a unit name as a string
             charm_name: name of charm as a string
         """
-        warnings.warn(
-            "observability_libs.v0.juju_topology is deprecated. Use `pip install cosl` instead",
-            category=DeprecationWarning,
-        )
-
         if not self.is_valid_uuid(model_uuid):
             raise InvalidUUIDError(model_uuid)
 
@@ -256,7 +240,7 @@ class JujuTopology:
         """Format the topology information into a dict with keys having 'juju_' as prefix.
 
         Relabelled topology never includes the unit as it would then only match
-        the leader unit (ie. the unit that produced the dict).
+        the leader unit (i.e. the unit that produced the dict).
         """
         items = self.as_dict(
             remapped_keys={"charm_name": "charm"},
@@ -270,7 +254,7 @@ class JujuTopology:
         """Format the topology information into a promql/logql label matcher string.
 
         Topology label matchers should never include the unit as it
-        would then only match the leader unit (ie. the unit that
+        would then only match the leader unit (i.e. the unit that
         produced the matchers).
         """
         items = self.label_matcher_dict.items()
