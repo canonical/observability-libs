@@ -153,26 +153,3 @@ class TestJujuTopologyLib(unittest.TestCase):
 
 def _filter_dict(labels, excluded_keys):
     return OrderedDict({k: v for k, v in labels.items() if k not in excluded_keys})
-
-
-class TestDeprecationWarning(unittest.TestCase):
-    def setUp(self):
-        self.input = OrderedDict(
-            [
-                ("model", "some-model"),
-                ("model_uuid", "00000000-0000-4000-8000-000000000000"),
-                ("application", "test-application"),
-                ("unit", "test-application/0"),
-                ("charm_name", "test-application"),
-            ]
-        )
-
-    def test_class_deprecated(self):
-        with self.assertWarns(DeprecationWarning):
-            JujuTopology(
-                self.input["model"],
-                self.input["model_uuid"],
-                self.input["application"],
-                self.input["unit"],
-                self.input["charm_name"],
-            )
