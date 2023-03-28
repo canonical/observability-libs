@@ -162,7 +162,15 @@ class MetricsEndpointObserver(Object):
     def stop_observers(self):
         """Stops all running instances of the observer."""
         logging.info("Stopping all running metrics endpoint observer processes")
-        subprocess.run(["pkill", "--signal", "INT", "-f", ".*lib/charms/observability_libs/v[0-9]/metrics_endpoint_discovery\.py.*"])
+        subprocess.run(
+            [
+                "pkill",
+                "--signal",
+                "INT",
+                "-f",
+                r".*lib/charms/observability_libs/v[0-9]/metrics_endpoint_discovery\.py.*",
+            ]
+        )
 
     @property
     def unit_tag(self):
