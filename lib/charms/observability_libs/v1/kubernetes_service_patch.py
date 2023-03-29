@@ -201,7 +201,8 @@ class KubernetesServicePatch(Object):
         # Ensure this patch is applied during the 'install' and 'upgrade-charm' events
         self.framework.observe(charm.on.install, self._patch)
         self.framework.observe(charm.on.upgrade_charm, self._patch)
-
+        self.framework.observe(charm.on.update_status, self._patch)
+        
         # apply user defined events
         if refresh_event:
             if not isinstance(refresh_event, list):
