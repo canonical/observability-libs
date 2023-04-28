@@ -38,10 +38,10 @@ class ObservabilityLibsCharm(CharmBase):
         self.framework.observe(self.on.start, self._configure)
 
     def _resource_spec_from_config(self) -> ResourceRequirements:
-        resource_limit = dict(
-            cpu=self.model.config.get("cpu"),
-            memory=self.model.config.get("memory"),
-        )
+        resource_limit = {
+            "cpu": self.model.config.get("cpu"),
+            "memory": self.model.config.get("memory"),
+        }
         return adjust_resource_requirements(resource_limit, None)
 
     def _on_resource_patch_failed(self, event: K8sResourcePatchFailedEvent):
