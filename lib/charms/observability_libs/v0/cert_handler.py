@@ -25,12 +25,12 @@ cert_handler = CertHandler(
 This library requires a peer relation to be declared in the requirer's metadata. Peer relation data
 is used for "persistent storage" of the private key and certs.
 """
-import socket
-from typing import Optional, Union, List
 import json
+import socket
+from typing import List, Optional, Union
 
 try:
-    from charms.tls_certificates_interface.v2.tls_certificates import (  # pyright: ignore
+    from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ignore
         AllCertificatesInvalidatedEvent,
         CertificateAvailableEvent,
         CertificateExpiringEvent,
@@ -43,10 +43,11 @@ except ImportError:
     raise ImportError(
         "charms.tls_certificates_interface.v2.tls_certificates is missing; please get it through charmcraft fetch-lib"
     )
-from ops.charm import CharmBase, RelationBrokenEvent
-from ops.model import Relation
-from ops.framework import EventBase, EventSource, Object, ObjectEvents
 import logging
+
+from ops.charm import CharmBase, RelationBrokenEvent
+from ops.framework import EventBase, EventSource, Object, ObjectEvents
+from ops.model import Relation
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ class CertChanged(EventBase):
 
 
 class CertHandlerEvents(ObjectEvents):
+    """Events for CertHandler."""
+
     cert_changed = EventSource(CertChanged)
 
 
@@ -68,7 +71,16 @@ class CertHandler(Object):
     """CertHandler is used to wrap TLS Certificates management operations for charms.
 
     CerHandler manages one single cert.
+
+    Args:
+        key: A manually-crafted, static, unique identifier used by ops to identify events.
+        It shouldn't change between one event to another.
+        peer_relation_name: Must match metadata.yaml.
+        certificates_relation_name: Must match metadata.yaml.
+        cert_subject: Custom subject. Name collisions are under the caller's responsibility.
+        extra_sans_dns: Any additional DNS names apart from FQDN.
     """
+
     on = CertHandlerEvents()  # pyright: ignore
 
     def __init__(
@@ -81,16 +93,6 @@ class CertHandler(Object):
         cert_subject: Optional[str] = None,
         extra_sans_dns: Optional[List[str]] = None,
     ):
-        """
-        Args:
-            key: A manually-crafted, static, unique identifier used by ops to identify events.
-                 It shouldn't change between one event to another.
-            peer_relation_name: Must match metadata.yaml.
-            certificates_relation_name: Must match metadata.yaml.
-            cert_subject: Custom subject. Name collisions are under the caller's responsibility.
-            extra_sans_dns: Any additional DNS names apart from FQDN.
-
-        """
         super().__init__(charm, key)
 
         self.charm = charm
@@ -127,8 +129,8 @@ class CertHandler(Object):
             self._on_all_certificates_invalidated,
         )
         self.framework.observe(
-            self.charm.on.certificates_relation_broken, # pyright: ignore
-            self._on_certificates_relation_broken
+            self.charm.on.certificates_relation_broken,  # pyright: ignore
+            self._on_certificates_relation_broken,
         )
 
         # Peer relation events
@@ -180,7 +182,9 @@ class CertHandler(Object):
         if self._peer_relation and self.charm.model.get_relation(self.certificates_relation_name):
             self._generate_csr(renew=True)
 
-    def _generate_csr(self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False):
+    def _generate_csr(
+        self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
+    ):
         """Request a CSR "creation" if renew is False, otherwise request a renewal.
 
         Without overwrite=True, the CSR would be created only once, even if calling the method
@@ -195,13 +199,15 @@ class CertHandler(Object):
 
         # In case we already have a csr, do not overwrite it by default.
         if overwrite or renew or not self._csr:
+            private_key = self._private_key
+            assert private_key is not None  # for type checker
             csr = generate_csr(
-                private_key=self._private_key.encode(),
+                private_key=private_key.encode(),
                 subject=self.cert_subject,
-                sans_dns=[socket.getfqdn()] + self.extra_sans_dns
+                sans_dns=[socket.getfqdn()] + self.extra_sans_dns,
             )
 
-            if renew:
+            if renew and self._csr:
                 self.certificates.request_certificate_renewal(
                     old_certificate_signing_request=self._csr.encode(),
                     new_certificate_signing_request=csr,
@@ -217,7 +223,7 @@ class CertHandler(Object):
         if clear_cert:
             self._ca_cert = ""
             self._server_cert = ""
-            self._chain = ""
+            self._chain = []
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Get the certificate from the event and store it in a peer relation.
@@ -239,6 +245,7 @@ class CertHandler(Object):
 
     @property
     def key(self):
+        """Return the private key."""
         return self._private_key
 
     @property
@@ -250,7 +257,9 @@ class CertHandler(Object):
     @_private_key.setter
     def _private_key(self, value: str):
         # Caller must guard. We want the setter to fail loudly. Failure must have a side effect.
-        self._peer_relation.data[self.charm.unit].update({"private_key": value})
+        rel = self._peer_relation
+        assert rel is not None  # For type checker
+        rel.data[self.charm.unit].update({"private_key": value})
 
     @property
     def _csr(self) -> Optional[str]:
@@ -261,7 +270,9 @@ class CertHandler(Object):
     @_csr.setter
     def _csr(self, value: str):
         # Caller must guard. We want the setter to fail loudly. Failure must have a side effect.
-        self._peer_relation.data[self.charm.unit].update({"csr": value})
+        rel = self._peer_relation
+        assert rel is not None  # For type checker
+        rel.data[self.charm.unit].update({"csr": value})
 
     @property
     def _ca_cert(self) -> Optional[str]:
@@ -272,10 +283,13 @@ class CertHandler(Object):
     @_ca_cert.setter
     def _ca_cert(self, value: str):
         # Caller must guard. We want the setter to fail loudly. Failure must have a side effect.
-        self._peer_relation.data[self.charm.unit].update({"ca": value})
+        rel = self._peer_relation
+        assert rel is not None  # For type checker
+        rel.data[self.charm.unit].update({"ca": value})
 
     @property
     def cert(self):
+        """Return the server cert."""
         return self._server_cert
 
     @property
@@ -287,7 +301,9 @@ class CertHandler(Object):
     @_server_cert.setter
     def _server_cert(self, value: str):
         # Caller must guard. We want the setter to fail loudly. Failure must have a side effect.
-        self._peer_relation.data[self.charm.unit].update({"certificate": value})
+        rel = self._peer_relation
+        assert rel is not None  # For type checker
+        rel.data[self.charm.unit].update({"certificate": value})
 
     @property
     def _chain(self) -> List[str]:
@@ -299,7 +315,9 @@ class CertHandler(Object):
     @_chain.setter
     def _chain(self, value: List[str]):
         # Caller must guard. We want the setter to fail loudly. Failure must have a side effect.
-        self._peer_relation.data[self.charm.unit].update({"chain": json.dumps(value)})
+        rel = self._peer_relation
+        assert rel is not None  # For type checker
+        rel.data[self.charm.unit].update({"chain": json.dumps(value)})
 
     def _on_certificate_expiring(
         self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
