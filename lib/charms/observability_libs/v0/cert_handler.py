@@ -14,12 +14,20 @@ This library should be used to create a `CertHandler` object, as per the
 following example:
 
 ```python
-cert_handler = CertHandler(
+self.cert_handler = CertHandler(
     charm=self,
+    key="my-app-cert-manager",
     peer_relation_name="replicas",
     cert_subject="unit_name",  # Optional
-    key="cert-manager"  # Optional
 )
+```
+
+You can then observe the library's custom event and make use of the key and cert:
+```python
+self.framework.observe(self.cert_handler.on.cert_changed, self._on_server_cert_changed)
+
+container.push(keypath, self.cert_handler.key)
+container.push(certpath, self.cert_handler.cert)
 ```
 
 This library requires a peer relation to be declared in the requirer's metadata. Peer relation data
@@ -68,18 +76,7 @@ class CertHandlerEvents(ObjectEvents):
 
 
 class CertHandler(Object):
-    """CertHandler is used to wrap TLS Certificates management operations for charms.
-
-    CerHandler manages one single cert.
-
-    Args:
-        key: A manually-crafted, static, unique identifier used by ops to identify events.
-        It shouldn't change between one event to another.
-        peer_relation_name: Must match metadata.yaml.
-        certificates_relation_name: Must match metadata.yaml.
-        cert_subject: Custom subject. Name collisions are under the caller's responsibility.
-        extra_sans_dns: Any additional DNS names apart from FQDN.
-    """
+    """A wrapper for the requirer side of the TLS Certificates charm library."""
 
     on = CertHandlerEvents()  # pyright: ignore
 
@@ -93,6 +90,19 @@ class CertHandler(Object):
         cert_subject: Optional[str] = None,
         extra_sans_dns: Optional[List[str]] = None,
     ):
+        """CertHandler is used to wrap TLS Certificates management operations for charms.
+
+        CerHandler manages one single cert.
+
+        Args:
+            charm: The owning charm.
+            key: A manually-crafted, static, unique identifier used by ops to identify events.
+             It shouldn't change between one event to another.
+            peer_relation_name: Must match metadata.yaml.
+            certificates_relation_name: Must match metadata.yaml.
+            cert_subject: Custom subject. Name collisions are under the caller's responsibility.
+            extra_sans_dns: Any additional DNS names apart from FQDN.
+        """
         super().__init__(charm, key)
 
         self.charm = charm
