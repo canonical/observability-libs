@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 0
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class CertChanged(EventBase):
@@ -147,6 +147,11 @@ class CertHandler(Object):
         self.framework.observe(
             self.charm.on[self.peer_relation_name].relation_created, self._on_peer_relation_created
         )
+
+    @property
+    def enabled(self) -> bool:
+        """Boolean indicating whether the charm has a tls_certificates relation."""
+        return len(self.charm.model.relations[self.certificates_relation_name]) > 0
 
     @property
     def _peer_relation(self) -> Optional[Relation]:
