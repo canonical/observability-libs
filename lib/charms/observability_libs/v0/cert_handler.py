@@ -153,7 +153,10 @@ class CertHandler(Object):
         """Boolean indicating whether the charm has a tls_certificates relation."""
         # We need to check for units as a temporary workaround because of https://bugs.launchpad.net/juju/+bug/2024583
         # This could in theory not work correctly on scale down to 0 but it is necessary for the moment.
-        return len(self.charm.model.relations[self.certificates_relation_name]) > 0 and len(self.charm.model.get_relation(self.certificates_relation_name).units) > 0
+        return (
+            len(self.charm.model.relations[self.certificates_relation_name]) > 0
+            and len(self.charm.model.get_relation(self.certificates_relation_name).units) > 0  # type: ignore
+        )
 
     @property
     def _peer_relation(self) -> Optional[Relation]:
