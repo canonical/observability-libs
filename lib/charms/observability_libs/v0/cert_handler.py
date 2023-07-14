@@ -257,7 +257,8 @@ class CertHandler(Object):
         # relation-changed. If that is not the case, we would need more guards and more paths.
 
         # Process the cert only if it belongs to the unit that requested it (this unit)
-        if event.certificate_signing_request == self._csr:
+        event_csr = event.certificate_signing_request.strip() if event.certificate_signing_request else None
+        if event_csr == self._csr:
             self._ca_cert = event.ca
             self._server_cert = event.certificate
             self._chain = event.chain
