@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 0
-LIBPATCH = 3
+LIBPATCH = 4
 
 
 class CertChanged(EventBase):
@@ -221,10 +221,11 @@ class CertHandler(Object):
         if overwrite or renew or not self._csr:
             private_key = self._private_key
             assert private_key is not None  # for type checker
+            sans_dns = [socket.getfqdn()] + self.extra_sans_dns
             csr = generate_csr(
                 private_key=private_key.encode(),
                 subject=self.cert_subject,
-                sans_dns=[socket.getfqdn()] + self.extra_sans_dns,
+                sans_dns=sans_dns,
             )
 
             if renew and self._csr:
@@ -233,6 +234,7 @@ class CertHandler(Object):
                     new_certificate_signing_request=csr,
                 )
             else:
+                logger.info("Creating CSR for %s with DNS %s", self.cert_subject, sans_dns)
                 self.certificates.request_certificate_creation(certificate_signing_request=csr)
 
             # Note: CSR is being replaced with a new one, so until we get the new cert, we'd have
