@@ -110,7 +110,7 @@ class CertHandler(Object):
         self.cert_subject = charm.unit.name if not cert_subject else cert_subject
 
         # Use fqdn only if no SANs were given, and drop empty/duplicate SANs
-        self.sans_dns = list(set(filter(None, (extra_sans_dns or [socket.getfqdn()]))))
+        self.sans_dns = list(set(filter(None, extra_sans_dns))) or [socket.getfqdn()]
 
         self.peer_relation_name = peer_relation_name
         self.certificates_relation_name = certificates_relation_name
