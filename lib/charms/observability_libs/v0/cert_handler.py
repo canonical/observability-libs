@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 0
-LIBPATCH = 7
+LIBPATCH = 8
 
 
 class CertChanged(EventBase):
@@ -168,31 +168,40 @@ class CertHandler(Object):
         return self.charm.model.get_relation(self.peer_relation_name, None)
 
     def _on_peer_relation_created(self, _):
-        """Generate the private key and store it in a peer relation."""
-        # We're in "relation-created", so the relation should be there
+        """Generate the CSR if the certificates relation is ready."""
+        self._generate_csr_if_ready()
 
-        # Just in case we already have a private key, do not overwrite it.
-        # Not sure how this could happen.
+    def _on_certificates_relation_joined(self, _) -> None:
+        """Generate the CSR if the peer relation is ready."""
+        self._generate_csr_if_ready()
+
+    def _generate_privkey(self):
+        # Generate priv key unless done already
         # TODO figure out how to go about key rotation.
         if not self._private_key:
             private_key = generate_private_key()
             self._private_key = private_key.decode()
 
-        # Generate CSR here, in case peer events fired after tls-certificate relation events
-        if not (self.charm.model.get_relation(self.certificates_relation_name)):
-            # peer relation event happened to fire before tls-certificates events.
-            # Abort, and let the "certificates joined" observer create the CSR.
-            return
-
-        self._generate_csr()
-
-    def _on_certificates_relation_joined(self, _) -> None:
-        """Generate the CSR and request the certificate creation."""
+    def _generate_csr_if_ready(self):
+        """Common exit hook for peer and certificates relation-created/joined flows."""
+        self._generate_privkey()
+        # check that peer and cert relations are in place
+        # todo: compound status would be handy here to set waiting in either case
+        # check peer relation is there
         if not self._peer_relation:
             # tls-certificates relation event happened to fire before peer events.
             # Abort, and let the "peer joined" relation create the CSR.
+            logger.info("certhandler waiting on peer relation")
             return
 
+        # check cert relation is ready
+        if not (self.charm.model.get_relation(self.certificates_relation_name)):
+            # peer relation event happened to fire before tls-certificates events.
+            # Abort, and let the "certificates joined" observer create the CSR.
+            logger.info("certhandler waiting on certificates relation")
+            return
+
+        logger.debug("certhandler has peer and certs relation: proceeding to generate csr")
         self._generate_csr()
 
     def _on_config_changed(self, _):
@@ -224,7 +233,10 @@ class CertHandler(Object):
         # In case we already have a csr, do not overwrite it by default.
         if overwrite or renew or not self._csr:
             private_key = self._private_key
-            assert private_key is not None  # for type checker
+            if private_key is None:
+                raise RuntimeError(
+                    "private key unset. call _generate_privkey() before you call this method."
+                )
             csr = generate_csr(
                 private_key=private_key.encode(),
                 subject=self.cert_subject,
