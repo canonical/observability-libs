@@ -10,5 +10,4 @@ build/
 .tox/
 .mypy_cache
 .vscode
-/lib/charms/tls_certificates_interface
 *.egg-info/
