@@ -11,5 +11,7 @@ bases:
         channel: "20.04"
 parts:
   charm:
+    charm-binary-python-packages:
+      - httpx  # https://github.com/pypa/setuptools_scm/issues/918
     build-packages:
       - git
