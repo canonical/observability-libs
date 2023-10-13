@@ -123,7 +123,7 @@ from lightkube.utils.quantity import equals_canonically, parse_quantity
 from ops import CollectStatusEvent
 from ops.charm import CharmBase
 from ops.framework import BoundEvent, EventBase, EventSource, Object, ObjectEvents
-from ops.model import BlockedStatus
+from ops.model import BlockedStatus, WaitingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -475,6 +475,11 @@ class KubernetesComputeResourcesPatch(Object):
     def _on_collect_unit_status(self, event: CollectStatusEvent):
         if self.last_error:
             event.add_status(BlockedStatus(f"[resource patch] {self.last_error}"))
+
+        if not self.is_ready():
+            event.add_status(
+                WaitingStatus("[resource patch] Waiting for resource limit patch to apply")
+            )
 
     def _on_config_changed(self, _):
         self._patch()
