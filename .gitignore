@@ -10,3 +10,4 @@ build/
 .tox/
 .mypy_cache
 .vscode
+*.egg-info/
