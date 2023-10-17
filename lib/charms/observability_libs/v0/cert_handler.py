@@ -37,7 +37,7 @@ import ipaddress
 import json
 import socket
 from itertools import filterfalse
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 
 try:
     from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ignore
@@ -375,7 +375,7 @@ class CertHandler(Object):
     def _chain(self) -> List[str]:
         if self._peer_relation:
             if chain := self._peer_relation.data[self.charm.unit].get("chain", []):
-                return json.loads(str(chain))
+                return json.loads(cast(str, chain))
         return []
 
     @_chain.setter
