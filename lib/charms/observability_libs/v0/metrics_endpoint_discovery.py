@@ -47,7 +47,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable
 
-from lightkube import Client
+from lightkube import Client  # pyright: ignore
 from lightkube.resources.core_v1 import Pod
 from ops.charm import CharmBase, CharmEvents
 from ops.framework import EventBase, EventSource, Object, StoredState
@@ -62,7 +62,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 # File path where metrics endpoint change data is written for exchange
 # between the discovery process and the materialised event.
@@ -199,7 +199,7 @@ def main():
     """
     labels, run_cmd, unit, charm_dir = sys.argv[1:]
 
-    client = Client()
+    client = Client()  # pyright: ignore
     labels = json.loads(labels)
 
     for change, entity in client.watch(Pod, namespace="*", labels=labels):

@@ -4,6 +4,7 @@
 
 
 """A tester charm for the Observability libs."""
+import typing
 
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     K8sResourcePatchFailedEvent,
@@ -45,7 +46,7 @@ class ObservabilityLibsCharm(CharmBase):
         return adjust_resource_requirements(resource_limit, None)
 
     def _on_resource_patch_failed(self, event: K8sResourcePatchFailedEvent):
-        self.unit.status = BlockedStatus(event.message)
+        self.unit.status = BlockedStatus(typing.cast(str, event.message))
 
     def _configure(self, _):
         container = self.unit.get_container(self._container_name)
