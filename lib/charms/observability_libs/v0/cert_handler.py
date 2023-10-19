@@ -49,10 +49,13 @@ try:
         generate_csr,
         generate_private_key,
     )
-except ImportError:
+except ImportError as e:
     raise ImportError(
-        "charms.tls_certificates_interface.v2.tls_certificates is missing; please get it through charmcraft fetch-lib"
-    )
+        "failed to import charms.tls_certificates_interface.v2.tls_certificates; "
+        "Either the library itself is missing (please get it through charmcraft fetch-lib) "
+        "or one of its dependencies is unmet."
+    ) from e
+
 import logging
 
 from ops.charm import CharmBase, RelationBrokenEvent
@@ -64,7 +67,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 0
-LIBPATCH = 8
+LIBPATCH = 9
 
 
 def is_ip_address(value: str) -> bool:
