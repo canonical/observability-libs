@@ -541,10 +541,13 @@ class KubernetesComputeResourcesPatch(Object):
         except ValueError as e:
             msg = f"Failed obtaining resource limit spec: {e}"
             logger.error(msg)
+            self.last_error = msg
             return False
 
         if not is_valid_spec(limits) or not is_valid_spec(requests):
-            logger.error("Invalid resource requirements specs: %s, %s", limits, requests)
+            msg = f"Invalid resource requirements specs: {limits}, {requests}"
+            logger.error(msg)
+            self.last_error = msg
             return False
 
         resource_reqs = ResourceRequirements(
