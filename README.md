@@ -1,6 +1,6 @@
 # Observability Libs
 
-[![Release Libraries](https://github.com/canonical/observability-libs/actions/workflows/release-libs.yaml/badge.svg)](https://github.com/canonical/observability-libs/actions/workflows/release-libs.yaml)
+[![Release](https://github.com/canonical/observability-libs/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/observability-libs/actions/workflows/release.yaml)
 [![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
 ## Description
