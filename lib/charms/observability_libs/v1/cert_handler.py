@@ -184,13 +184,13 @@ class CertHandler(Object):
         if not relation:
             return
 
-        private_key = relation.data[self.charm.app].get("private-key", None)
+        private_key = relation.data[self.charm.unit].get("private-key", None)
 
         if not private_key:
             private_key = generate_private_key()
-            secret = self.charm.app.add_secret({"private-key": private_key.decode()})
+            secret = self.charm.unit.add_secret({"private-key": private_key.decode()})
             secret.grant(relation)
-            relation.data[self.charm.app]["private-key-secret-id"] = secret.id  # pyright: ignore
+            relation.data[self.charm.unit]["private-key-secret-id"] = secret.id  # pyright: ignore
 
     def _on_config_changed(self, _):
         relation = self.charm.model.get_relation(self.certificates_relation_name)
@@ -279,16 +279,16 @@ class CertHandler(Object):
                     logger.error("Relation %s not found", self.certificates_relation_name)
                     return
 
-                secret = self.charm.app.add_secret(content, label="ca-certificate-chain")
+                secret = self.charm.unit.add_secret(content, label="ca-certificate-chain")
                 secret.grant(relation)
-                relation.data[self.charm.app]["secret-id"] = secret.id  # pyright: ignore
+                relation.data[self.charm.unit]["secret-id"] = secret.id  # pyright: ignore
                 self.on.cert_changed.emit()  # pyright: ignore
 
     def _retrieve_from_secret(self, value: str, secret_id_name: str):
         if not (relation := self.charm.model.get_relation(self.certificates_relation_name)):
             return None
 
-        if not (secret_id := relation.data[self.charm.app].get(secret_id_name)):
+        if not (secret_id := relation.data[self.charm.unit].get(secret_id_name)):
             return None
 
         if not (secret := self.model.get_secret(id=secret_id)):
@@ -315,10 +315,10 @@ class CertHandler(Object):
         if not (relation := self.charm.model.get_relation(self.certificates_relation_name)):
             return
 
-        if not (secret_id := relation.data[self.charm.app].get("csr-secret-id", None)):
-            secret = self.charm.app.add_secret({"csr": value})
+        if not (secret_id := relation.data[self.charm.unit].get("csr-secret-id", None)):
+            secret = self.charm.unit.add_secret({"csr": value})
             secret.grant(relation)
-            relation.data[self.charm.app]["csr-secret-id"] = secret.id  # pyright: ignore
+            relation.data[self.charm.unit]["csr-secret-id"] = secret.id  # pyright: ignore
             return
 
         secret = self.model.get_secret(id=secret_id)
