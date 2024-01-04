@@ -25,12 +25,11 @@ You can then observe the library's custom event and make use of the key and cert
 ```python
 self.framework.observe(self.cert_handler.on.cert_changed, self._on_server_cert_changed)
 
-container.push(keypath, self.cert_handler.key)
-container.push(certpath, self.cert_handler.cert)
+container.push(keypath, self.cert_handler.private_key)
+container.push(certpath, self.cert_handler.servert_cert)
 ```
 
-This library requires a peer relation to be declared in the requirer's metadata. Peer relation data
-is used for "persistent storage" of the private key and certs.
+Since this library uses [Juju Secrets](https://juju.is/docs/juju/secret) it requires Juju >= 3.0.3.
 """
 import ipaddress
 import json
@@ -59,6 +58,7 @@ import logging
 
 from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import EventBase, EventSource, Object, ObjectEvents
+from ops.jujuversion import JujuVersion
 from ops.model import SecretNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -115,6 +115,7 @@ class CertHandler(Object):
             sans: DNS names. If none are given, use FQDN.
         """
         super().__init__(charm, key)
+        self._check_juju_supports_secrets()
 
         self.charm = charm
         # We need to sanitize the unit name, otherwise route53 complains:
@@ -134,7 +135,7 @@ class CertHandler(Object):
             self._on_config_changed,
         )
         self.framework.observe(
-            self.charm.on.certificates_relation_joined,  # pyright: ignore
+            self.charm.on[self.certificates_relation_name].relation_joined,  # pyright: ignore
             self._on_certificates_relation_joined,
         )
         self.framework.observe(
@@ -166,15 +167,14 @@ class CertHandler(Object):
         return (
             len(self.charm.model.relations[self.certificates_relation_name]) > 0
             and len(self.charm.model.get_relation(self.certificates_relation_name).units) > 0  # type: ignore
+            and self.charm.model.get_relation(self.certificates_relation_name).data.get(
+                self.charm.unit
+            )
         )
 
     def _on_certificates_relation_joined(self, _) -> None:
-        """Generate the CSR and request the certificate creation."""
         self._generate_privkey()
         self._generate_csr()
-
-    def _on_certificates_relation_changed(self, _) -> None:
-        pass
 
     def _generate_privkey(self):
         # Generate priv key unless done already
@@ -213,7 +213,7 @@ class CertHandler(Object):
         """
         # In case we already have a csr, do not overwrite it by default.
         if overwrite or renew or not self._csr:
-            private_key = self._private_key
+            private_key = self.private_key
             if private_key is None:
                 # FIXME: raise this in a less nested scope by
                 #  generating privkey and csr in the same method.
@@ -284,7 +284,7 @@ class CertHandler(Object):
                 relation.data[self.charm.unit]["secret-id"] = secret.id  # pyright: ignore
                 self.on.cert_changed.emit()  # pyright: ignore
 
-    def _retrieve_from_secret(self, value: str, secret_id_name: str):
+    def _retrieve_from_secret(self, value: str, secret_id_name: str) -> Optional[str]:
         if not (relation := self.charm.model.get_relation(self.certificates_relation_name)):
             return None
 
@@ -298,12 +298,8 @@ class CertHandler(Object):
         return content.get(value)
 
     @property
-    def key(self):
-        """Return the private key."""
-        return self._private_key
-
-    @property
-    def _private_key(self) -> Optional[str]:
+    def private_key(self) -> Optional[str]:
+        """Private key."""
         return self._retrieve_from_secret("private-key", "private-key-secret-id")
 
     @property
@@ -325,21 +321,13 @@ class CertHandler(Object):
         secret.set_content({"csr": value})
 
     @property
-    def _ca_cert(self) -> Optional[str]:
+    def ca_cert(self) -> Optional[str]:
+        """CA Certificate."""
         return self._retrieve_from_secret("ca-cert", "secret-id")
 
     @property
-    def cert(self):
-        """Return the server cert."""
-        return self._server_cert
-
-    @property
-    def ca(self):
-        """Return the CA cert."""
-        return self._ca_cert
-
-    @property
-    def _server_cert(self) -> Optional[str]:
+    def server_cert(self) -> Optional[str]:
+        """Server Certificate."""
         return self._retrieve_from_secret("server-cert", "secret-id")
 
     @property
@@ -355,19 +343,19 @@ class CertHandler(Object):
         self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
     ) -> None:
         """Generate a new CSR and request certificate renewal."""
-        if event.certificate == self._server_cert:
+        if event.certificate == self.server_cert:
             self._generate_csr(renew=True)
 
     def _certificate_revoked(self, event) -> None:
         """Remove the certificate and generate a new CSR."""
         # Note: assuming "limit: 1" in metadata
-        if event.certificate == self._server_cert:
+        if event.certificate == self.server_cert:
             self._generate_csr(overwrite=True, clear_cert=True)
             self.on.cert_changed.emit()  # pyright: ignore
 
     def _on_certificate_invalidated(self, event: CertificateInvalidatedEvent) -> None:
         """Deal with certificate revocation and expiration."""
-        if event.certificate != self._server_cert:
+        if event.certificate != self.server_cert:
             return
 
         # if event.reason in ("revoked", "expired"):
@@ -389,3 +377,11 @@ class CertHandler(Object):
         except SecretNotFoundError:
             logger.debug("Secret 'csr-scret-id' not found")
         self.on.cert_changed.emit()  # pyright: ignore
+
+    def _check_juju_supports_secrets(self) -> None:
+        version = JujuVersion.from_environ()
+
+        if not JujuVersion(version=str(version)).has_secrets:
+            msg = f"Juju version {version} does not supports Secrets. Juju >= 3.0.3 is needed"
+            logger.error(msg)
+            raise RuntimeError(msg)
