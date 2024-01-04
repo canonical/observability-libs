@@ -1,3 +1,4 @@
+import os
 import socket
 import sys
 from pathlib import Path
@@ -20,6 +21,9 @@ class MyCharm(CharmBase):
 
     def __init__(self, fw):
         super().__init__(fw)
+
+        # Set minimal Juju version
+        os.environ["JUJU_VERSION"] = "3.0.3"
         self.ch = CertHandler(self, key="ch", sans=[socket.getfqdn()])
 
 
@@ -39,4 +43,4 @@ def test_cert_joins(ctx, certificates, leader):
         certificates.joined_event, State(leader=leader, relations=[certificates])
     ) as runner:
         runner.run()
-        assert runner.charm.ch._private_key
+        assert runner.charm.ch.private_key
