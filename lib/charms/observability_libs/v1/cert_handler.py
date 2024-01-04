@@ -164,13 +164,20 @@ class CertHandler(Object):
         """Boolean indicating whether the charm has a tls_certificates relation."""
         # We need to check for units as a temporary workaround because of https://bugs.launchpad.net/juju/+bug/2024583
         # This could in theory not work correctly on scale down to 0 but it is necessary for the moment.
-        return (
-            len(self.charm.model.relations[self.certificates_relation_name]) > 0
-            and len(self.charm.model.get_relation(self.certificates_relation_name).units) > 0  # type: ignore
-            and self.charm.model.get_relation(self.certificates_relation_name).data.get(
-                self.charm.unit
-            )
-        )
+
+        if not self.charm.model.get_relation(self.certificates_relation_name):
+            return False
+
+        if not self.charm.model.get_relation(self.certificates_relation_name).units:  # pyright: ignore
+            return False
+
+        if not self.charm.model.get_relation(self.certificates_relation_name).app:  # pyright: ignore
+            return False
+
+        if not self.charm.model.get_relation(self.certificates_relation_name).data:  # pyright: ignore
+            return False
+
+        return True
 
     def _on_certificates_relation_joined(self, _) -> None:
         self._generate_privkey()
