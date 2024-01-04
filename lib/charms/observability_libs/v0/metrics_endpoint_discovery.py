@@ -209,9 +209,9 @@ def main():
         meta = entity.metadata
         metrics_path = ""
         if entity.metadata.annotations.get("prometheus.io/path", ""):  # pyright: ignore
-            metrics_path = entity.metadata.annotations.get(
+            metrics_path = entity.metadata.annotations.get(  # pyright: ignore
                 "prometheus.io/path", ""
-            )  # pyright: ignore
+            )
 
         target_ports = []
         for c in filter(lambda c: c.ports is not None, entity.spec.containers):  # pyright: ignore
