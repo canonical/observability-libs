@@ -168,13 +168,19 @@ class CertHandler(Object):
         if not self.charm.model.get_relation(self.certificates_relation_name):
             return False
 
-        if not self.charm.model.get_relation(self.certificates_relation_name).units:  # pyright: ignore
+        if not self.charm.model.get_relation(
+            self.certificates_relation_name
+        ).units:  # pyright: ignore
             return False
 
-        if not self.charm.model.get_relation(self.certificates_relation_name).app:  # pyright: ignore
+        if not self.charm.model.get_relation(
+            self.certificates_relation_name
+        ).app:  # pyright: ignore
             return False
 
-        if not self.charm.model.get_relation(self.certificates_relation_name).data:  # pyright: ignore
+        if not self.charm.model.get_relation(
+            self.certificates_relation_name
+        ).data:  # pyright: ignore
             return False
 
         return True
