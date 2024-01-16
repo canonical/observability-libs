@@ -297,7 +297,6 @@ class CertHandler(Object):
                 relation.data[self.charm.unit]["secret-id"] = secret.id  # pyright: ignore
                 self.on.cert_changed.emit()  # pyright: ignore
 
-
     def _retrieve_secret_id(self, secret_id_name: str) -> Optional[str]:
         if not (relation := self.charm.model.get_relation(self.certificates_relation_name)):
             return None
