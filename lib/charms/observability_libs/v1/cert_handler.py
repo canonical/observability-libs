@@ -323,7 +323,7 @@ class CertHandler(Object):
 
     @property
     def private_key_secret_id(self) -> Optional[str]:
-        """Private key secret id."""
+        """ID of the Juju Secret for the Private key."""
         return self._retrieve_secret_id("private-key-secret-id")
 
     @property
