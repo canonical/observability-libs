@@ -351,7 +351,7 @@ class CertHandler(Object):
 
     @property
     def ca_server_cert_secret_id(self) -> Optional[str]:
-        """CA, servert cert secret id."""
+        """CA server cert secret id."""
         return self._retrieve_secret_id("secret-id")
 
     @property
