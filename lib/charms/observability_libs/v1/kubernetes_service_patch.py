@@ -146,9 +146,13 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
+
+
+class DuplicatePortsError(Exception):
+    """Raised if the user attempts to pass to the patch duplicate ports."""
 
 
 class KubernetesServicePatch(Object):
@@ -165,6 +169,7 @@ class KubernetesServicePatch(Object):
         additional_annotations: Optional[dict] = None,
         *,
         refresh_event: Optional[Union[BoundEvent, List[BoundEvent]]] = None,
+        key: str = "kubernetes-service-patch"
     ):
         """Constructor for KubernetesServicePatch.
 
@@ -184,7 +189,7 @@ class KubernetesServicePatch(Object):
                 will be observed to re-apply the patch (e.g. on port change).
                 The `install` and `upgrade-charm` events would be observed regardless.
         """
-        super().__init__(charm, "kubernetes-service-patch")
+        super().__init__(charm, key)
         self.charm = charm
         self.service_name = service_name if service_name else self._app
         self.service = self._service_object(
@@ -237,6 +242,15 @@ class KubernetesServicePatch(Object):
         Returns:
             Service: A valid representation of a Kubernetes Service with the correct ports.
         """
+        # check for duplicate ports
+        ports_with_dupes = list((p.port, p.protocol) for p in ports)
+        ports_dedup = set((p.port, p.protocol) for p in ports)
+        for port in ports_dedup:
+            ports_with_dupes.remove(port)
+
+        if ports_with_dupes:
+            raise DuplicatePortsError(f"duplicate ports: {ports_with_dupes}")
+
         if not service_name:
             service_name = self._app
         labels = {"app.kubernetes.io/name": self._app}

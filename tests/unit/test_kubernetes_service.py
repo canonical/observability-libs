@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 from unittest.mock import Mock, mock_open, patch
 
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch, DuplicatePortsError
 from lightkube import ApiError
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta
@@ -361,6 +361,18 @@ class TestK8sServicePatch(unittest.TestCase):
 
         self.assertEqual(service_patch.service, expected_service)
 
+    def test_patch_raises_on_duplicate_ports(self):
+        """Check that patch raises if duplicate ports are requested."""
+        with self.assertRaises(DuplicatePortsError):
+            KubernetesServicePatch(
+                self.harness.charm,
+                ports=[
+                    ServicePort(name="svc1", port=1234, protocol="TCP"),
+                    ServicePort(name="svc2", port=1234, protocol="TCP"),
+                ],
+                key="foo"
+            )
+
     def test_custom_event_is_fired(self):
         """Check that events provided via refresh_event are called."""
         charm = self.harness.charm
@@ -500,3 +512,4 @@ class TestK8sServicePatch(unittest.TestCase):
             with self.assertRaises(_FakeApiError):
                 charm.custom_service_name_service_patch.is_patched()
             self.assertIn("Kubernetes service get failed: broken", ";".join(logs.output))
+
