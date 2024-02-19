@@ -398,7 +398,7 @@ class ResourcePatcher:
             self.get_actual(pod_name),
         )
         return self.is_patched(resource_reqs) and equals_canonically(  # pyright: ignore
-             resource_reqs, self.get_actual(pod_name)  # pyright: ignore
+            resource_reqs, self.get_actual(pod_name)  # pyright: ignore
         )
 
     def apply(self, resource_reqs: ResourceRequirements) -> None:
