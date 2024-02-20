@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
 
-KEY_PATH = "/tmp/server.key"
-CERT_PATH = "/tmp/server.cert"
-CA_CERT_PATH = "/tmp/ca.cert"
+KEY_PATH = "/home/ubuntu/secrets/server.key"
+CERT_PATH = "/home/ubuntu/secrets/server.cert"
+CA_CERT_PATH = "/home/ubuntu/secrets/ca.cert"
 
 
 class TesterCharm(ops.CharmBase):
