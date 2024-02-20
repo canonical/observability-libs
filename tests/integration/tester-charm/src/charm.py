@@ -34,6 +34,11 @@ class TesterCharm(ops.CharmBase):
         self.framework.observe(self.cert_handler.on.cert_changed, self._on_server_cert_changed)
         self.framework.observe(self.on["httpbin"].pebble_ready, self._on_httpbin_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.upgrade_charm, self._on_upgrade_charm)
+
+
+    def _on_upgrade_charm(self, _):
+        self._update_cert()
 
     def _on_server_cert_changed(self, _):
         self._update_cert()

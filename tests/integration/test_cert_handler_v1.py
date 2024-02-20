@@ -76,7 +76,7 @@ async def test_cert_handler_v1(
 async def test_secrets_does_not_change_after_refresh(ops_test: OpsTest, tester_charm: Path):
     paths = [KEY_PATH, CERT_PATH, CA_CERT_PATH]
     secrets = {paths[0]: "", paths[1]: "", paths[2]: ""}
-    breakpoint()
+
     for path in paths:
         secrets[path] = get_secret(ops_test, APP_NAME, path)
 
