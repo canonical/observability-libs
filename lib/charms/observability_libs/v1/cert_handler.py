@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 def is_ip_address(value: str) -> bool:
@@ -211,6 +211,7 @@ class CertHandler(Object):
         if not relation:
             return
 
+        self._generate_privkey()
         self._generate_csr(renew=True)
 
     def _generate_csr(
