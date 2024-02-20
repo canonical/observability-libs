@@ -36,7 +36,6 @@ class TesterCharm(ops.CharmBase):
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.upgrade_charm, self._on_upgrade_charm)
 
-
     def _on_upgrade_charm(self, _):
         self._update_cert()
 
