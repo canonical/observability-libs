@@ -40,7 +40,7 @@ from itertools import filterfalse
 from typing import List, Optional, Union, cast
 
 try:
-    from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ignore
+    from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore
         AllCertificatesInvalidatedEvent,
         CertificateAvailableEvent,
         CertificateExpiringEvent,
@@ -51,7 +51,7 @@ try:
     )
 except ImportError as e:
     raise ImportError(
-        "failed to import charms.tls_certificates_interface.v2.tls_certificates; "
+        "failed to import charms.tls_certificates_interface.v3.tls_certificates; "
         "Either the library itself is missing (please get it through charmcraft fetch-lib) "
         "or one of its dependencies is unmet."
     ) from e
@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 0
-LIBPATCH = 9
+LIBPATCH = 10
 
 
 def is_ip_address(value: str) -> bool:
