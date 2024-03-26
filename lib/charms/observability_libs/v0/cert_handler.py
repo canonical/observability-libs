@@ -45,7 +45,7 @@ try:
         CertificateAvailableEvent,
         CertificateExpiringEvent,
         CertificateInvalidatedEvent,
-        TLSCertificatesRequiresV2,
+        TLSCertificatesRequiresV3,
         generate_csr,
         generate_private_key,
     )
@@ -132,7 +132,7 @@ class CertHandler(Object):
         self.peer_relation_name = peer_relation_name
         self.certificates_relation_name = certificates_relation_name
 
-        self.certificates = TLSCertificatesRequiresV2(self.charm, self.certificates_relation_name)
+        self.certificates = TLSCertificatesRequiresV3(self.charm, self.certificates_relation_name)
 
         self.framework.observe(
             self.charm.on.config_changed,
