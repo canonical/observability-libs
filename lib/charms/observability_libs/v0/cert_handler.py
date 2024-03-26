@@ -382,7 +382,7 @@ class CertHandler(Object):
         return ""
 
     @_chain.setter
-    def _chain(self, value: List[str]):
+    def _chain(self, value: str):
         # Caller must guard. We want the setter to fail loudly. Failure must have a side effect.
         rel = self._peer_relation
         assert rel is not None  # For type checker
