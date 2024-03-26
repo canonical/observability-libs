@@ -282,7 +282,7 @@ class CertHandler(Object):
         if clear_cert:
             self._ca_cert = ""
             self._server_cert = ""
-            self._chain = []
+            self._chain = ""
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Get the certificate from the event and store it in a peer relation.
@@ -304,7 +304,7 @@ class CertHandler(Object):
         if event_csr == self._csr:
             self._ca_cert = event.ca
             self._server_cert = event.certificate
-            self._chain = event.chain
+            self._chain = event.chain_as_pem()
             self.on.cert_changed.emit()  # pyright: ignore
 
     @property
@@ -375,11 +375,11 @@ class CertHandler(Object):
         rel.data[self.charm.unit].update({"certificate": value})
 
     @property
-    def _chain(self) -> List[str]:
+    def _chain(self) -> str:
         if self._peer_relation:
-            if chain := self._peer_relation.data[self.charm.unit].get("chain", []):
+            if chain := self._peer_relation.data[self.charm.unit].get("chain", ""):
                 return json.loads(cast(str, chain))
-        return []
+        return ""
 
     @_chain.setter
     def _chain(self, value: List[str]):
@@ -389,7 +389,7 @@ class CertHandler(Object):
         rel.data[self.charm.unit].update({"chain": json.dumps(value)})
 
     @property
-    def chain(self) -> List[str]:
+    def chain(self) -> str:
         """Return the ca chain."""
         return self._chain
 
