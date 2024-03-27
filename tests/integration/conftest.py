@@ -79,7 +79,7 @@ async def tester_charm(ops_test: OpsTest) -> Path:
     fetch_tls_cmd = [
         "charmcraft",
         "fetch-lib",
-        "charms.tls_certificates_interface.v2.tls_certificates",
+        "charms.tls_certificates_interface.v3.tls_certificates",
     ]
     await ops_test.run(*fetch_tls_cmd)
     shutil.move("lib/charms/tls_certificates_interface", f"{TESTINGCHARM_PATH}/lib/charms/")
