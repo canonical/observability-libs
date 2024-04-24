@@ -223,8 +223,9 @@ class CertHandler(Object):
         """
         # if we are in a relation-broken hook, we might not have a relation to publish the csr to.
         if not self.charm.model.get_relation(self.certificates_relation_name):
-            logger.warning(f"No {self.certificates_relation_name!r} relation found. "
-                           f"Cannot generate csr.")
+            logger.warning(
+                f"No {self.certificates_relation_name!r} relation found. " f"Cannot generate csr."
+            )
             return
 
         # In case we already have a csr, do not overwrite it by default.
