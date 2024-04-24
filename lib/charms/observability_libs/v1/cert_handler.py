@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 def is_ip_address(value: str) -> bool:
@@ -224,6 +224,12 @@ class CertHandler(Object):
 
         This method intentionally does not emit any events, leave it for caller's responsibility.
         """
+        # if the certificates relation is dead (perhaps we are in a relation-removed hook),
+        # don't do anything.
+        if not self.charm.model.get_relation(self.certificates_relation_name):
+            logger.debug(f"no {self.certificates_relation_name} relation found; skipping _generate_csr.")
+            return
+
         # In case we already have a csr, do not overwrite it by default.
         if overwrite or renew or not self._csr:
             private_key = self.private_key
