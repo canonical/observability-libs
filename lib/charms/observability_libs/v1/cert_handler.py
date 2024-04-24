@@ -221,10 +221,10 @@ class CertHandler(Object):
 
         This method intentionally does not emit any events, leave it for caller's responsibility.
         """
-        # if the certificates relation is dead (perhaps we are in a relation-removed hook),
-        # don't do anything.
+        # if we are in a relation-broken hook, we might not have a relation to publish the csr to.
         if not self.charm.model.get_relation(self.certificates_relation_name):
-            logger.debug(f"no {self.certificates_relation_name} relation found; skipping _generate_csr.")
+            logger.warning(f"No {self.certificates_relation_name!r} relation found. "
+                           f"Cannot generate csr.")
             return
 
         # In case we already have a csr, do not overwrite it by default.
