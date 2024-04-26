@@ -1,4 +1,3 @@
-import os
 import socket
 import sys
 from pathlib import Path
@@ -22,14 +21,12 @@ class MyCharm(CharmBase):
     def __init__(self, fw):
         super().__init__(fw)
 
-        # Set minimal Juju version
-        os.environ["JUJU_VERSION"] = "3.0.3"
         self.ch = CertHandler(self, key="ch", sans=[socket.getfqdn()])
 
 
 @pytest.fixture
 def ctx():
-    return Context(MyCharm, MyCharm.META)
+    return Context(MyCharm, MyCharm.META, juju_version="3.0.3")
 
 
 @pytest.fixture
@@ -41,6 +38,6 @@ def certificates():
 def test_cert_joins(ctx, certificates, leader):
     with ctx.manager(
         certificates.joined_event, State(leader=leader, relations=[certificates])
-    ) as runner:
-        runner.run()
-        assert runner.charm.ch.private_key
+    ) as mgr:
+        mgr.run()
+        assert mgr.charm.ch.private_key
