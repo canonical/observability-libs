@@ -11,3 +11,4 @@ build/
 .mypy_cache
 .vscode
 *.egg-info/
+/lib/charms/tls_certificates_interface
