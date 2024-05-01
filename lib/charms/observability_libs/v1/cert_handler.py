@@ -36,7 +36,7 @@ import ipaddress
 import json
 import socket
 from itertools import filterfalse
-from typing import List, Optional, Union, Dict, Any
+from typing import Dict, List, Optional, Union
 
 try:
     from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore
@@ -44,9 +44,10 @@ try:
         CertificateAvailableEvent,
         CertificateExpiringEvent,
         CertificateInvalidatedEvent,
+        ProviderCertificate,
         TLSCertificatesRequiresV3,
         generate_csr,
-        generate_private_key, ProviderCertificate,
+        generate_private_key,
     )
 except ImportError as e:
     raise ImportError(
@@ -60,7 +61,7 @@ import logging
 from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import EventBase, EventSource, Object, ObjectEvents
 from ops.jujuversion import JujuVersion
-from ops.model import SecretNotFoundError, Secret, Relation
+from ops.model import Relation, Secret, SecretNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ class _RelationVaultBackend(_VaultBackend):
     def _write(self, value: Dict[str, str]):
         if not all(isinstance(x, str) for x in value.values()):
             # the caller has to take care of encoding
-            raise TypeError(f"You can only store strings in Vault.")
+            raise TypeError("You can only store strings in Vault.")
 
         self._databag[self.nest_under] = json.dumps(value)
 
