@@ -92,7 +92,7 @@ class CertHandlerEvents(ObjectEvents):
 class _VaultBackend(abc.ABC):
     def store(self, contents: Dict[str, str], clear: bool = False): ...
 
-    def get_value(self, key: str) -> str: ...
+    def get_value(self, key: str) -> Optional[str]: ...
 
     def retrieve(self) -> Dict[str, str]: ...
 
@@ -116,7 +116,7 @@ class _RelationVaultBackend(_VaultBackend):
 
     def _check_ready(self):
         try:
-            self.charm.model.get_relation(self.relation_name).data[self.charm.unit]
+            self.charm.model.get_relation(self.relation_name).data[self.charm.unit]   # pyright: ignore
         except Exception as e:
             # if something goes wrong here, the peer-backed vault is not ready to operate
             # it can be because you are trying to use it too soon, i.e. before the peer
@@ -131,7 +131,7 @@ class _RelationVaultBackend(_VaultBackend):
     @property
     def _databag(self):
         self._check_ready()
-        return self._relation.data[self.charm.unit]
+        return self._relation.data[self.charm.unit]  # pyright: ignore
 
     def _read(self) -> Dict[str, str]:
         value = self._databag.get(self.nest_under)
