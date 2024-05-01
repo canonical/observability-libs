@@ -472,6 +472,7 @@ class CertHandler(Object):
         return csrs[-1].csr
 
     def get_cert(self) -> ProviderCertificate:
+        """Get cert."""
         all_certs = self.certificates.get_provider_certificates()
         return [c for c in all_certs if c.csr == self._csr][0]
 
