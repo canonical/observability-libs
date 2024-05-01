@@ -34,7 +34,7 @@ Since this library uses [Juju Secrets](https://juju.is/docs/juju/secret) it requ
 import ipaddress
 import socket
 from itertools import filterfalse
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 try:
     from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore
@@ -58,10 +58,9 @@ import logging
 from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import EventBase, EventSource, Object, ObjectEvents
 from ops.jujuversion import JujuVersion
-from ops.model import SecretNotFoundError
+from ops.model import SecretNotFoundError, Secret
 
 logger = logging.getLogger(__name__)
-
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
@@ -87,23 +86,73 @@ class CertHandlerEvents(ObjectEvents):
     cert_changed = EventSource(CertChanged)
 
 
+class Vault:
+    """Simple application secret wrapper for local usage."""
+    _uninitialized_key = "__uninitialized_secret_key__"
+
+    def __init__(self, charm: CharmBase, label: str, __id: str = None):
+        self.charm = charm
+        self.label = label  # needs to be charm-unique.
+        self._id = __id
+
+    @property
+    def _secret(self) -> Secret:
+        if self._id:
+            # we are observers. This vault has been created with import_
+            # if this secret is not found, there's something wrong.
+            try:
+                return self.charm.model.get_secret(id=self._id, label=self.label)
+            except SecretNotFoundError:
+                logger.exception(f"Unable to load vault from secret id {self._id}: "
+                                 f"has the remote created it?")
+                raise
+
+        # we are owners.
+        try:
+            return self.charm.model.get_secret(label=self.label)
+        except SecretNotFoundError:
+            # we need to set SOME contents when we're creating the secret, so we do it.
+            return self.charm.app.add_secret({self._uninitialized_key: "42"}, label=self.label)
+
+    def store(self, contents: Dict[str, str], clear: bool=False):
+        """Create a new revision by updating the previous one with ``contents``."""
+        secret = self._secret
+        current = secret.get_content(refresh=True)
+
+        if clear:
+            current.clear()
+        elif current.get(self._uninitialized_key):
+            # is this the first revision? clean up the dummy contents we created instants ago.
+            del current[self._uninitialized_key]
+
+        current.update(contents)
+        secret.set_content(current)
+
+    def get_value(self, key):
+        """Like retrieve, but single-value."""
+        return self._secret.get_content(refresh=True).get(key)
+
+    def retrieve(self):
+        """Return the full vault content."""
+        return self._secret.get_content(refresh=True)
+
+    def nuke(self):
+        self._secret.remove_all_revisions()
+
+
 class CertHandler(Object):
     """A wrapper for the requirer side of the TLS Certificates charm library."""
 
     on = CertHandlerEvents()  # pyright: ignore
 
-    _ca_cert_chain_secret_label = "ca-certificate-chain"
-    _csr_secret_id = "csr-secret-id"
-    _privkey_secret_id = "private-key-secret-id"
-
     def __init__(
-        self,
-        charm: CharmBase,
-        *,
-        key: str,
-        certificates_relation_name: str = "certificates",
-        cert_subject: Optional[str] = None,
-        sans: Optional[List[str]] = None,
+            self,
+            charm: CharmBase,
+            *,
+            key: str,
+            certificates_relation_name: str = "certificates",
+            cert_subject: Optional[str] = None,
+            sans: Optional[List[str]] = None,
     ):
         """CertHandler is used to wrap TLS Certificates management operations for charms.
 
@@ -129,6 +178,8 @@ class CertHandler(Object):
         sans = list(set(filter(None, (sans or [socket.getfqdn()]))))
         self.sans_ip = list(filter(is_ip_address, sans))
         self.sans_dns = list(filterfalse(is_ip_address, sans))
+
+        self.vault = Vault(charm, label="cert-handler-private-vault")
 
         self.certificates_relation_name = certificates_relation_name
         self.certificates = TLSCertificatesRequiresV3(self.charm, self.certificates_relation_name)
@@ -172,38 +223,24 @@ class CertHandler(Object):
             return False
 
         if not self.charm.model.get_relation(
-            self.certificates_relation_name
+                self.certificates_relation_name
         ).units:  # pyright: ignore
             return False
 
         if not self.charm.model.get_relation(
-            self.certificates_relation_name
+                self.certificates_relation_name
         ).app:  # pyright: ignore
             return False
 
         if not self.charm.model.get_relation(
-            self.certificates_relation_name
+                self.certificates_relation_name
         ).data:  # pyright: ignore
             return False
 
         return True
 
     def _on_certificates_relation_joined(self, _) -> None:
-        self._generate_privkey()
         self._generate_csr()
-
-    def _generate_privkey(self):
-        # Generate priv key unless done already
-        # TODO figure out how to go about key rotation.
-
-        if not (relation := self.charm.model.get_relation(self.certificates_relation_name)):
-            return
-
-        if not self.private_key:
-            private_key = generate_private_key()
-            secret = self.charm.unit.add_secret({"private-key": private_key.decode()})
-            secret.grant(relation)
-            relation.data[self.charm.unit][self._privkey_secret_id] = secret.id  # pyright: ignore
 
     def _on_config_changed(self, _):
         relation = self.charm.model.get_relation(self.certificates_relation_name)
@@ -211,11 +248,15 @@ class CertHandler(Object):
         if not relation:
             return
 
-        self._generate_privkey()
         self._generate_csr(renew=True)
 
+    @property
+    def relation(self):
+        """The certificates relation."""
+        return self.charm.model.get_relation(self.certificates_relation_name)
+
     def _generate_csr(
-        self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
+            self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
     ):
         """Request a CSR "creation" if renew is False, otherwise request a renewal.
 
@@ -226,7 +267,7 @@ class CertHandler(Object):
         This method intentionally does not emit any events, leave it for caller's responsibility.
         """
         # if we are in a relation-broken hook, we might not have a relation to publish the csr to.
-        if not self.charm.model.get_relation(self.certificates_relation_name):
+        if not self.relation:
             logger.warning(
                 f"No {self.certificates_relation_name!r} relation found. " f"Cannot generate csr."
             )
@@ -261,11 +302,6 @@ class CertHandler(Object):
                     self.sans_ip,
                 )
                 self.certificates.request_certificate_creation(certificate_signing_request=csr)
-
-            # Note: CSR is being replaced with a new one, so until we get the new cert, we'd have
-            # a mismatch between the CSR and the cert.
-            # For some reason the csr contains a trailing '\n'. TODO figure out why
-            self._csr = csr.decode().strip()
 
         if clear_cert:
             try:
@@ -330,30 +366,15 @@ class CertHandler(Object):
     @property
     def private_key(self) -> Optional[str]:
         """Private key."""
-        return self._retrieve_from_secret("private-key", self._privkey_secret_id)
-
-    @property
-    def private_key_secret_id(self) -> Optional[str]:
-        """ID of the Juju Secret for the Private key."""
-        return self._retrieve_secret_id(self._privkey_secret_id)
+        private_key = self.vault.get_value("private-key")
+        if private_key is None:
+            private_key = generate_private_key()
+            self.vault.store({"private-key": private_key.decode()})
+        return private_key
 
     @property
     def _csr(self) -> Optional[str]:
         return self._retrieve_from_secret("csr", self._csr_secret_id)
-
-    @_csr.setter
-    def _csr(self, value: str):
-        if not (relation := self.charm.model.get_relation(self.certificates_relation_name)):
-            return
-
-        if not (secret_id := relation.data[self.charm.unit].get(self._csr_secret_id, None)):
-            secret = self.charm.unit.add_secret({"csr": value})
-            secret.grant(relation)
-            relation.data[self.charm.unit][self._csr_secret_id] = secret.id  # pyright: ignore
-            return
-
-        secret = self.model.get_secret(id=secret_id)
-        secret.set_content({"csr": value})
 
     @property
     def ca_cert(self) -> Optional[str]:
@@ -380,7 +401,7 @@ class CertHandler(Object):
         return self._chain
 
     def _on_certificate_expiring(
-        self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
+            self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
     ) -> None:
         """Generate a new CSR and request certificate renewal."""
         if event.certificate == self.server_cert:
