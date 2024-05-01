@@ -385,7 +385,7 @@ class CertHandler(Object):
     def _chain(self) -> List[str]:
         if self._peer_relation:
             if chain := self._peer_relation.data[self.charm.unit].get("chain", []):
-                return json.loads(chain)
+                return cast(list, json.loads(cast(str, chain)))
         return []
 
     @_chain.setter
