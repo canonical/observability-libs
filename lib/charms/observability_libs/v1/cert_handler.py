@@ -175,6 +175,7 @@ class _SecretVaultBackend(_VaultBackend):
     Assumes that Juju supports secrets.
     If not, it will raise some exception as soon as you try to read/write.
     """
+
     _uninitialized_key = "uninitialized-secret-key"
 
     def __init__(self, charm: CharmBase, label: str):
@@ -245,13 +246,13 @@ class CertHandler(Object):
     on = CertHandlerEvents()  # pyright: ignore
 
     def __init__(
-            self,
-            charm: CharmBase,
-            *,
-            key: str,
-            certificates_relation_name: str = "certificates",
-            cert_subject: Optional[str] = None,
-            sans: Optional[List[str]] = None,
+        self,
+        charm: CharmBase,
+        *,
+        key: str,
+        certificates_relation_name: str = "certificates",
+        cert_subject: Optional[str] = None,
+        sans: Optional[List[str]] = None,
     ):
         """CertHandler is used to wrap TLS Certificates management operations for charms.
 
@@ -358,17 +359,17 @@ class CertHandler(Object):
             return False
 
         if not self.charm.model.get_relation(
-                self.certificates_relation_name
+            self.certificates_relation_name
         ).units:  # pyright: ignore
             return False
 
         if not self.charm.model.get_relation(
-                self.certificates_relation_name
+            self.certificates_relation_name
         ).app:  # pyright: ignore
             return False
 
         if not self.charm.model.get_relation(
-                self.certificates_relation_name
+            self.certificates_relation_name
         ).data:  # pyright: ignore
             return False
 
@@ -392,7 +393,7 @@ class CertHandler(Object):
         return self.charm.model.get_relation(self.certificates_relation_name)
 
     def _generate_csr(
-            self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
+        self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
     ):
         """Request a CSR "creation" if renew is False, otherwise request a renewal.
 
@@ -492,7 +493,7 @@ class CertHandler(Object):
         return self.get_cert().chain_as_pem()
 
     def _on_certificate_expiring(
-            self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
+        self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
     ) -> None:
         """Generate a new CSR and request certificate renewal."""
         if event.certificate == self.server_cert:
