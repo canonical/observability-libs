@@ -116,7 +116,9 @@ class _RelationVaultBackend(_VaultBackend):
 
     def _check_ready(self):
         try:
-            self.charm.model.get_relation(self.relation_name).data[self.charm.unit]   # pyright: ignore
+            self.charm.model.get_relation(self.relation_name).data[  # pyright: ignore
+                self.charm.unit
+            ]
         except Exception as e:
             # if something goes wrong here, the peer-backed vault is not ready to operate
             # it can be because you are trying to use it too soon, i.e. before the peer
