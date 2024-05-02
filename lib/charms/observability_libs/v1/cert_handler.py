@@ -91,11 +91,12 @@ class CertHandlerEvents(ObjectEvents):
 
 class _VaultBackend(abc.ABC):
     """Base class for a single secret manager.
-    
+
     Assumptions:
     - A single secret (label) is managed by a single instance.
     - Secret is per-unit (not per-app, i.e. may differ from unit to unit).
     """
+
     def store(self, contents: Dict[str, str], clear: bool = False): ...
 
     def get_value(self, key: str) -> Optional[str]: ...
@@ -115,7 +116,7 @@ class _RelationVaultBackend(_VaultBackend):
     key in the **unit databag** of this relation.
 
     Typically, you'll use this with peer relations.
-    
+
     Note: it is assumed that this object has exclusive access to the data, even though in practice it does not.
       Modifying relation data yourself would go unnoticed and disrupt consistency.
     """
@@ -185,7 +186,7 @@ class _SecretVaultBackend(_VaultBackend):
     Use it to store data in a Juju secret.
     Assumes that Juju supports secrets.
     If not, it will raise some exception as soon as you try to read/write.
-    
+
     Note: it is assumed that this object has exclusive access to the data, even though in practice it does not.
       Modifying secret's data yourself would go unnoticed and disrupt consistency.
     """
@@ -423,12 +424,6 @@ class CertHandler(Object):
         # In case we already have a csr, do not overwrite it by default.
         if overwrite or renew or not self._csr:
             private_key = self.private_key
-            if private_key is None:
-                # FIXME: raise this in a less nested scope by
-                #  generating privkey and csr in the same method.
-                raise RuntimeError(
-                    "private key unset. call _generate_privkey() before you call this method."
-                )
             csr = generate_csr(
                 private_key=private_key.encode(),
                 subject=self.cert_subject,
@@ -458,7 +453,7 @@ class CertHandler(Object):
         self.on.cert_changed.emit()  # pyright: ignore
 
     @property
-    def private_key(self) -> Optional[str]:
+    def private_key(self) -> str:
         """Private key.
 
         BEWARE: if the vault misbehaves, the backing secret is removed, the peer relation dies
