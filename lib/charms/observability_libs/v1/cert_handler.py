@@ -36,7 +36,7 @@ import ipaddress
 import json
 import socket
 from itertools import filterfalse
-from typing import List, Optional, Union, Dict, Any
+from typing import Dict, List, Optional, Union
 
 try:
     from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore
@@ -44,9 +44,10 @@ try:
         CertificateAvailableEvent,
         CertificateExpiringEvent,
         CertificateInvalidatedEvent,
+        ProviderCertificate,
         TLSCertificatesRequiresV3,
         generate_csr,
-        generate_private_key, ProviderCertificate,
+        generate_private_key,
     )
 except ImportError as e:
     raise ImportError(
@@ -60,13 +61,13 @@ import logging
 from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import EventBase, EventSource, Object, ObjectEvents
 from ops.jujuversion import JujuVersion
-from ops.model import SecretNotFoundError, Secret, Relation
+from ops.model import Relation, Secret, SecretNotFoundError
 
 logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
-LIBPATCH = 6
+LIBPATCH = 7
 
 
 def is_ip_address(value: str) -> bool:
@@ -89,13 +90,17 @@ class CertHandlerEvents(ObjectEvents):
 
 
 class _VaultBackend(abc.ABC):
-    def store(self, contents: Dict[str, str], clear: bool = False): ...
+    def store(self, contents: Dict[str, str], clear: bool = False):
+        ...
 
-    def get_value(self, key: str) -> str: ...
+    def get_value(self, key: str) -> Optional[str]:
+        ...
 
-    def retrieve(self) -> Dict[str, str]: ...
+    def retrieve(self) -> Dict[str, str]:
+        ...
 
-    def nuke(self): ...
+    def nuke(self):
+        ...
 
 
 class _RelationVaultBackend(_VaultBackend):
@@ -106,6 +111,8 @@ class _RelationVaultBackend(_VaultBackend):
     If not, it will raise RuntimeErrors as soon as you try to read/write.
     It will store the data, in plaintext (json-dumped) nested under a configurable
     key in the **unit databag** of this relation.
+
+    Typically, you'll use this with peer relations.
     """
 
     def __init__(self, charm: CharmBase, relation_name: str, nest_under: str = "secret-contents"):
@@ -114,13 +121,12 @@ class _RelationVaultBackend(_VaultBackend):
         self.nest_under = nest_under  # needs to be charm-unique.
 
     def _check_ready(self):
-        try:
-            self.charm.model.get_relation(self.relation_name).data[self.charm.unit]
-        except Exception as e:
+        relation = self.charm.model.get_relation(self.relation_name)
+        if not relation or not relation.data:
             # if something goes wrong here, the peer-backed vault is not ready to operate
-            # it can be because you are trying to use it too soon, i.e. before the peer
+            # it can be because you are trying to use it too soon, i.e. before the (peer)
             # relation has been created (or has joined).
-            raise RuntimeError(" backend not ready.") from e
+            raise RuntimeError("Relation backend not ready.")
 
     @property
     def _relation(self) -> Optional[Relation]:
@@ -130,7 +136,8 @@ class _RelationVaultBackend(_VaultBackend):
     @property
     def _databag(self):
         self._check_ready()
-        return self._relation.data[self.charm.unit]
+        # _check_ready verifies that there is a relation
+        return self._relation.data[self.charm.unit]  # type: ignore
 
     def _read(self) -> Dict[str, str]:
         value = self._databag.get(self.nest_under)
@@ -141,7 +148,7 @@ class _RelationVaultBackend(_VaultBackend):
     def _write(self, value: Dict[str, str]):
         if not all(isinstance(x, str) for x in value.values()):
             # the caller has to take care of encoding
-            raise TypeError(f"You can only store strings in Vault.")
+            raise TypeError("You can only store strings in Vault.")
 
         self._databag[self.nest_under] = json.dumps(value)
 
@@ -155,7 +162,7 @@ class _RelationVaultBackend(_VaultBackend):
         current.update(contents)
         self._write(current)
 
-    def get_value(self, key: str):
+    def get_value(self, key: str) -> Optional[str]:
         """Like retrieve, but single-value."""
         return self._read().get(key)
 
@@ -174,6 +181,7 @@ class _SecretVaultBackend(_VaultBackend):
     Assumes that Juju supports secrets.
     If not, it will raise some exception as soon as you try to read/write.
     """
+
     _uninitialized_key = "uninitialized-secret-key"
 
     def __init__(self, charm: CharmBase, label: str):
@@ -203,7 +211,7 @@ class _SecretVaultBackend(_VaultBackend):
         current.update(contents)
         secret.set_content(current)
 
-    def get_value(self, key):
+    def get_value(self, key: str) -> Optional[str]:
         """Like retrieve, but single-value."""
         return self._secret.get_content(refresh=True).get(key)
 
@@ -244,13 +252,13 @@ class CertHandler(Object):
     on = CertHandlerEvents()  # pyright: ignore
 
     def __init__(
-            self,
-            charm: CharmBase,
-            *,
-            key: str,
-            certificates_relation_name: str = "certificates",
-            cert_subject: Optional[str] = None,
-            sans: Optional[List[str]] = None,
+        self,
+        charm: CharmBase,
+        *,
+        key: str,
+        certificates_relation_name: str = "certificates",
+        cert_subject: Optional[str] = None,
+        sans: Optional[List[str]] = None,
     ):
         """CertHandler is used to wrap TLS Certificates management operations for charms.
 
@@ -357,33 +365,29 @@ class CertHandler(Object):
             return False
 
         if not self.charm.model.get_relation(
-                self.certificates_relation_name
+            self.certificates_relation_name
         ).units:  # pyright: ignore
             return False
 
         if not self.charm.model.get_relation(
-                self.certificates_relation_name
+            self.certificates_relation_name
         ).app:  # pyright: ignore
             return False
 
         if not self.charm.model.get_relation(
-                self.certificates_relation_name
+            self.certificates_relation_name
         ).data:  # pyright: ignore
             return False
 
         return True
 
     def _on_certificates_relation_joined(self, _) -> None:
-        if not self._csr:
-            self._generate_csr()
+        # this will only generate a csr if we don't have one already
+        self._generate_csr()
 
     def _on_config_changed(self, _):
-        relation = self.charm.model.get_relation(self.certificates_relation_name)
-
-        if not relation:
-            return
-
-        self._generate_csr(renew=True)
+        # this will only generate a csr if we don't have one already
+        self._generate_csr()
 
     @property
     def relation(self):
@@ -391,7 +395,7 @@ class CertHandler(Object):
         return self.charm.model.get_relation(self.certificates_relation_name)
 
     def _generate_csr(
-            self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
+        self, overwrite: bool = False, renew: bool = False, clear_cert: bool = False
     ):
         """Request a CSR "creation" if renew is False, otherwise request a renewal.
 
@@ -470,31 +474,38 @@ class CertHandler(Object):
             return None
         return csrs[-1].csr
 
-    def get_cert(self) -> ProviderCertificate:
+    def get_cert(self) -> Optional[ProviderCertificate]:
+        """Get the certificate from relation data."""
         all_certs = self.certificates.get_provider_certificates()
-        return [c for c in all_certs if c.csr == self._csr][0]
+        # search for the cert matching our csr.
+        matching_cert = [c for c in all_certs if c.csr == self._csr]
+        return matching_cert[0] if matching_cert else None
 
     @property
     def ca_cert(self) -> Optional[str]:
         """CA Certificate."""
-        return self.get_cert().ca
+        cert = self.get_cert()
+        return cert.ca if cert else None
 
     @property
     def server_cert(self) -> Optional[str]:
         """Server Certificate."""
-        return self.get_cert().certificate
+        cert = self.get_cert()
+        return cert.certificate if cert else None
 
     @property
     def chain(self) -> Optional[str]:
-        """Return the ca chain."""
-        return self.get_cert().chain_as_pem()
+        """Return the ca chain bundled as a single PEM string."""
+        cert = self.get_cert()
+        return cert.chain_as_pem() if cert else None
 
     def _on_certificate_expiring(
-            self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
+        self, event: Union[CertificateExpiringEvent, CertificateInvalidatedEvent]
     ) -> None:
         """Generate a new CSR and request certificate renewal."""
         if event.certificate == self.server_cert:
             self._generate_csr(renew=True)
+            # FIXME why are we not emitting cert_changed here?
 
     def _certificate_revoked(self, event) -> None:
         """Remove the certificate and generate a new CSR."""
@@ -505,13 +516,11 @@ class CertHandler(Object):
 
     def _on_certificate_invalidated(self, event: CertificateInvalidatedEvent) -> None:
         """Deal with certificate revocation and expiration."""
-        if event.certificate != self.server_cert:
-            return
-
-        # if event.reason in ("revoked", "expired"):
-        # Currently, the reason does not matter to us because the action is the same.
-        self._generate_csr(overwrite=True, clear_cert=True)
-        self.on.cert_changed.emit()  # pyright: ignore
+        if event.certificate == self.server_cert:
+            # if event.reason in ("revoked", "expired"):
+            # Currently, the reason does not matter to us because the action is the same.
+            self._generate_csr(overwrite=True, clear_cert=True)
+            self.on.cert_changed.emit()  # pyright: ignore
 
     def _on_all_certificates_invalidated(self, _: AllCertificatesInvalidatedEvent) -> None:
         # Do what you want with this information, probably remove all certificates
@@ -526,9 +535,8 @@ class CertHandler(Object):
 
     def _check_juju_supports_secrets(self) -> bool:
         version = JujuVersion.from_environ()
-
         if not JujuVersion(version=str(version)).has_secrets:
             msg = f"Juju version {version} does not supports Secrets. Juju >= 3.0.3 is needed"
-            logger.error(msg)
+            logger.debug(msg)
             return False
         return True
