@@ -96,7 +96,7 @@ class _VaultBackend(abc.ABC):
 
     def retrieve(self) -> Dict[str, str]: ...
 
-    def nuke(self): ...
+    def clear(self): ...
 
 
 class _RelationVaultBackend(_VaultBackend):
@@ -166,7 +166,7 @@ class _RelationVaultBackend(_VaultBackend):
         """Return the full vault content."""
         return self._read()
 
-    def nuke(self):
+    def clear(self):
         del self._databag[self.nest_under]
 
 
@@ -201,7 +201,7 @@ class _SecretVaultBackend(_VaultBackend):
         if clear:
             current.clear()
         elif current.get(self._uninitialized_key):
-            # is this the first revision? clean up the dummy contents we created instants ago.
+            # is this the first revision? clean up the mock contents we created instants ago.
             del current[self._uninitialized_key]
 
         current.update(contents)
@@ -215,7 +215,7 @@ class _SecretVaultBackend(_VaultBackend):
         """Return the full vault content."""
         return self._secret.get_content(refresh=True)
 
-    def nuke(self):
+    def clear(self):
         self._secret.remove_all_revisions()
 
 
@@ -237,9 +237,9 @@ class Vault:
         """Return the full vault content."""
         return self._backend.retrieve()
 
-    def nuke(self):
+    def clear(self):
         """Clear the vault."""
-        self._backend.nuke()
+        self._backend.clear()
 
 
 class CertHandler(Object):
@@ -345,7 +345,7 @@ class CertHandler(Object):
                 self.vault.store(peer_backend.retrieve())
 
                 # clear the peer storage
-                peer_backend.nuke()
+                peer_backend.clear()
                 return
 
         # if we are downgrading, i.e. from juju with secrets to juju without,
@@ -439,7 +439,7 @@ class CertHandler(Object):
                 self.certificates.request_certificate_creation(certificate_signing_request=csr)
 
         if clear_cert:
-            self.vault.nuke()
+            self.vault.clear()
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Emit cert-changed."""
@@ -455,7 +455,7 @@ class CertHandler(Object):
         The caller needs to ensure that if the vault backend gets reset, then so does the csr.
 
         TODO: we could consider adding a way to verify if the csr was signed by our privkey,
-            and do that on collect_unit_status as a sanity check
+            and do that on collect_unit_status as a consistency check
         """
         private_key = self.vault.get_value("private-key")
         if private_key is None:
@@ -468,6 +468,15 @@ class CertHandler(Object):
         csrs = self.certificates.get_requirer_csrs()
         if not csrs:
             return None
+
+        # in principle we only ever need one cert.
+        # we might want to complicate this a bit once we get into cert rotations: during the rotation, we may need to
+        # keep the old one around for a little while. If there's multiple certs, at the moment we're
+        # ignoring all but the last one.
+        if len(csrs) > 1:
+            logger.warning("Multiple CSRs found in `certificates` relation. "
+                           "cert_handler is not ready to expect it.")
+
         return csrs[-1].csr
 
     def get_cert(self) -> Optional[ProviderCertificate]:
@@ -526,7 +535,7 @@ class CertHandler(Object):
 
     def _on_certificates_relation_broken(self, _: RelationBrokenEvent) -> None:
         """Clear all secrets data when removing the relation."""
-        self.vault.nuke()
+        self.vault.clear()
         self.on.cert_changed.emit()  # pyright: ignore
 
     def _check_juju_supports_secrets(self) -> bool:
