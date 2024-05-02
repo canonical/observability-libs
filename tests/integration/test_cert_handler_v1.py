@@ -125,3 +125,6 @@ async def test_change_ssc_and_tester_still_have_certs(ops_test: OpsTest):
                 f"ls {path}",
             ]
         )
+
+    # TODO: Fix tester charm to use listen HTTPS when the relation to ssc is established
+    # and then curl HTTPS url to check if everything is working.
