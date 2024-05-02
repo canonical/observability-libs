@@ -432,12 +432,6 @@ class CertHandler(Object):
         # In case we already have a csr, do not overwrite it by default.
         if overwrite or renew or not self._csr:
             private_key = self.private_key
-            if private_key is None:
-                # FIXME: raise this in a less nested scope by
-                #  generating privkey and csr in the same method.
-                raise RuntimeError(
-                    "private key unset. call _generate_privkey() before you call this method."
-                )
             csr = generate_csr(
                 private_key=private_key.encode(),
                 subject=self.cert_subject,
@@ -467,7 +461,7 @@ class CertHandler(Object):
         self.on.cert_changed.emit()  # pyright: ignore
 
     @property
-    def private_key(self) -> Optional[str]:
+    def private_key(self) -> str:
         """Private key.
 
         BEWARE: if the vault misbehaves, the backing secret is removed, the peer relation dies
