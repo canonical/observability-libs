@@ -6,13 +6,12 @@ import pytest
 from ops import CharmBase
 from scenario import Context, Relation, State
 
-libs = str(Path(__file__).parent.parent.parent.parent / "lib")
-sys.path.append(libs)
-
 from lib.charms.observability_libs.v1.cert_handler import (
     CertHandler,
-    VAULT_SECRET_LABEL,
-)  # noqa E402
+)
+
+libs = str(Path(__file__).parent.parent.parent.parent / "lib")
+sys.path.append(libs)
 
 
 class MyCharm(CharmBase):
