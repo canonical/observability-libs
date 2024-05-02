@@ -101,12 +101,16 @@ async def test_change_ssc_and_tester_still_have_certs(ops_test: OpsTest):
         ),
     )
     # wait for all charms to be active
-    await ops_test.model.wait_for_idle(apps=["ca2", APP_NAME], status="active", wait_for_exact_units=1)
+    await ops_test.model.wait_for_idle(
+        apps=["ca2", APP_NAME], status="active", wait_for_exact_units=1
+    )
     logger.info("All services active")
 
     await ops_test.model.add_relation(APP_NAME, "ca2")
     logger.info("Relations issued")
-    await ops_test.model.wait_for_idle(apps=["ca2", APP_NAME], status="active", wait_for_exact_units=1)
+    await ops_test.model.wait_for_idle(
+        apps=["ca2", APP_NAME], status="active", wait_for_exact_units=1
+    )
     # Check the certs files are in the filesystem
     for path in [KEY_PATH, CERT_PATH, CA_CERT_PATH]:
         assert 0 == subprocess.check_call(
