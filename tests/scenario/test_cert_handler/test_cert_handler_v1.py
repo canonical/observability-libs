@@ -9,7 +9,10 @@ from scenario import Context, Relation, State
 libs = str(Path(__file__).parent.parent.parent.parent / "lib")
 sys.path.append(libs)
 
-from lib.charms.observability_libs.v1.cert_handler import CertHandler  # noqa E402
+from lib.charms.observability_libs.v1.cert_handler import (
+    CertHandler,
+    VAULT_SECRET_LABEL,
+)  # noqa E402
 
 
 class MyCharm(CharmBase):
@@ -37,7 +40,7 @@ def certificates():
 @pytest.mark.parametrize("leader", (True, False))
 def test_cert_joins(ctx, certificates, leader):
     with ctx.manager(
-        certificates.joined_event, State(leader=leader, relations=[certificates])
+        certificates.joined_event, State(leader=leader, relations=[certificates], secrets=[])
     ) as mgr:
         mgr.run()
         assert mgr.charm.ch.private_key

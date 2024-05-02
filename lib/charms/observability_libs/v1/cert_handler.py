@@ -69,6 +69,8 @@ LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
 LIBPATCH = 7
 
+VAULT_SECRET_LABEL = "cert-handler-private-vault"
+
 
 def is_ip_address(value: str) -> bool:
     """Return True if the input value is a valid IPv4 address; False otherwise."""
@@ -91,11 +93,12 @@ class CertHandlerEvents(ObjectEvents):
 
 class _VaultBackend(abc.ABC):
     """Base class for a single secret manager.
-    
+
     Assumptions:
     - A single secret (label) is managed by a single instance.
     - Secret is per-unit (not per-app, i.e. may differ from unit to unit).
     """
+
     def store(self, contents: Dict[str, str], clear: bool = False): ...
 
     def get_value(self, key: str) -> Optional[str]: ...
@@ -115,15 +118,19 @@ class _RelationVaultBackend(_VaultBackend):
     key in the **unit databag** of this relation.
 
     Typically, you'll use this with peer relations.
-    
+
     Note: it is assumed that this object has exclusive access to the data, even though in practice it does not.
       Modifying relation data yourself would go unnoticed and disrupt consistency.
     """
 
-    def __init__(self, charm: CharmBase, relation_name: str, nest_under: str = "secret-contents"):
+    _NEST_UNDER = "lib.charms.observability_libs.v1.cert_handler::vault"
+    # This key needs to be relation-unique. If someone ever creates multiple Vault(_RelationVaultBackend)
+    # instances backed by the same (peer) relation, they'll need to set different _NEST_UNDERs
+    # for each _RelationVaultBackend instance or they'll be fighting over it.
+
+    def __init__(self, charm: CharmBase, relation_name: str):
         self.charm = charm
         self.relation_name = relation_name
-        self.nest_under = nest_under  # needs to be charm-unique.
 
     def _check_ready(self):
         relation = self.charm.model.get_relation(self.relation_name)
@@ -145,7 +152,7 @@ class _RelationVaultBackend(_VaultBackend):
         return self._relation.data[self.charm.unit]  # type: ignore
 
     def _read(self) -> Dict[str, str]:
-        value = self._databag.get(self.nest_under)
+        value = self._databag.get(self._NEST_UNDER)
         if value:
             return json.loads(value)
         return {}
@@ -155,7 +162,7 @@ class _RelationVaultBackend(_VaultBackend):
             # the caller has to take care of encoding
             raise TypeError("You can only store strings in Vault.")
 
-        self._databag[self.nest_under] = json.dumps(value)
+        self._databag[self._NEST_UNDER] = json.dumps(value)
 
     def store(self, contents: Dict[str, str], clear: bool = False):
         """Create a new revision by updating the previous one with ``contents``."""
@@ -176,7 +183,7 @@ class _RelationVaultBackend(_VaultBackend):
         return self._read()
 
     def clear(self):
-        del self._databag[self.nest_under]
+        del self._databag[self._NEST_UNDER]
 
 
 class _SecretVaultBackend(_VaultBackend):
@@ -185,25 +192,27 @@ class _SecretVaultBackend(_VaultBackend):
     Use it to store data in a Juju secret.
     Assumes that Juju supports secrets.
     If not, it will raise some exception as soon as you try to read/write.
-    
+
     Note: it is assumed that this object has exclusive access to the data, even though in practice it does not.
       Modifying secret's data yourself would go unnoticed and disrupt consistency.
     """
 
     _uninitialized_key = "uninitialized-secret-key"
 
-    def __init__(self, charm: CharmBase, label: str):
+    def __init__(self, charm: CharmBase, secret_label: str):
         self.charm = charm
-        self.label = label  # needs to be charm-unique.
+        self.secret_label = secret_label  # needs to be charm-unique.
 
     @property
     def _secret(self) -> Secret:
         try:
             # we are owners, so we don't need to grant it to ourselves
-            return self.charm.model.get_secret(label=self.label)
+            return self.charm.model.get_secret(label=self.secret_label)
         except SecretNotFoundError:
             # we need to set SOME contents when we're creating the secret, so we do it.
-            return self.charm.app.add_secret({self._uninitialized_key: "42"}, label=self.label)
+            return self.charm.unit.add_secret(
+                {self._uninitialized_key: "42"}, label=self.secret_label
+            )
 
     def store(self, contents: Dict[str, str], clear: bool = False):
         """Create a new revision by updating the previous one with ``contents``."""
@@ -293,7 +302,7 @@ class CertHandler(Object):
         self.sans_dns = list(filterfalse(is_ip_address, sans))
 
         if self._check_juju_supports_secrets():
-            vault_backend = _SecretVaultBackend(charm, label="cert-handler-private-vault")
+            vault_backend = _SecretVaultBackend(charm, secret_label=VAULT_SECRET_LABEL)
 
             # TODO: gracefully handle situations where the
             #  secret is gone because the admin has removed it manually
@@ -486,8 +495,10 @@ class CertHandler(Object):
         # keep the old one around for a little while. If there's multiple certs, at the moment we're
         # ignoring all but the last one.
         if len(csrs) > 1:
-            logger.warning("Multiple CSRs found in `certificates` relation. "
-                           "cert_handler is not ready to expect it.")
+            logger.warning(
+                "Multiple CSRs found in `certificates` relation. "
+                "cert_handler is not ready to expect it."
+            )
 
         return csrs[-1].csr
 
