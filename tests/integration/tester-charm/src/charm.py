@@ -40,6 +40,7 @@ class TesterCharm(ops.CharmBase):
         self._update_cert()
 
     def _on_server_cert_changed(self, _):
+        # TODO: When the relation is established, configure gunicorn to listen HTTPS.
         self._update_cert()
 
     def _on_httpbin_pebble_ready(self, event: ops.PebbleReadyEvent):
