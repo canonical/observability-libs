@@ -87,3 +87,37 @@ async def test_secrets_does_not_change_after_refresh(ops_test: OpsTest, tester_c
 
     for path in paths:
         assert secrets[path] == get_secret(ops_test, APP_NAME, path)
+
+
+@pytest.mark.abort_on_fail
+async def test_change_ssc_and_tester_still_have_certs(ops_test: OpsTest):
+    await ops_test.model.remove_application("ca", block_until_done=True)
+    await asyncio.gather(
+        ops_test.model.deploy(
+            "self-signed-certificates",
+            application_name="ca2",
+            channel="beta",
+            trust=True,
+        ),
+    )
+    # wait for all charms to be active
+    await ops_test.model.wait_for_idle(apps=["ca2", APP_NAME], status="active", wait_for_exact_units=1)
+    logger.info("All services active")
+
+    await ops_test.model.add_relation(APP_NAME, "ca2")
+    logger.info("Relations issued")
+    await ops_test.model.wait_for_idle(apps=["ca2", APP_NAME], status="active", wait_for_exact_units=1)
+    # Check the certs files are in the filesystem
+    for path in [KEY_PATH, CERT_PATH, CA_CERT_PATH]:
+        assert 0 == subprocess.check_call(
+            [
+                "juju",
+                "ssh",
+                "--model",
+                ops_test.model_full_name,
+                "--container",
+                "httpbin",
+                f"{APP_NAME}/0",
+                f"ls {path}",
+            ]
+        )
