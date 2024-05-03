@@ -373,8 +373,10 @@ class CertHandler(Object):
 
             # we used to be on old juju: our secret stuff is in peer data
             if contents := peer_backend.retrieve():
-                logger.debug("some data found in relation-backed vault. "
-                             "Migrating to secret-backed vault...")
+                logger.debug(
+                    "some data found in relation-backed vault. "
+                    "Migrating to secret-backed vault..."
+                )
                 # move over to secret-backed storage
                 self.vault.store(contents)
 
