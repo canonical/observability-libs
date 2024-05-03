@@ -368,7 +368,9 @@ class CertHandler(Object):
             # we are on recent juju
             if self.vault.retrieve():
                 # we already were on recent juju: nothing to migrate
-                logger.debug("Private key is already stored as a juju secret. Skipping private key migration.")
+                logger.debug(
+                    "Private key is already stored as a juju secret. Skipping private key migration."
+                )
                 return
 
             # we used to be on old juju: our secret stuff is in peer data
