@@ -194,7 +194,7 @@ class KubernetesServicePatch(Object):
             service_name: allows setting custom name to the patched service. If none given,
                 application name will be used.
             is_new_service: allows creating a new service instead of patching the Kubernetes Service created
-                by Juju 
+                by Juju
             service_type: desired type of K8s service. Default value is in line with ServiceSpec's
                 default value.
             additional_labels: Labels to be added to the kubernetes service (by default only
