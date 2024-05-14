@@ -477,6 +477,14 @@ class CertHandler(Object):
         """Emit cert-changed."""
         self.on.cert_changed.emit()  # pyright: ignore
 
+    def private_key_exists(self) -> bool:
+        """check if private key is already generated
+
+        Returns:
+            bool: a boolean value indicating if a private key is generated
+        """
+        return False if self.vault.get_value("private-key") is None else True
+        
     @property
     def private_key(self) -> str:
         """Private key.
