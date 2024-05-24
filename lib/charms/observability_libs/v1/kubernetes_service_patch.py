@@ -110,7 +110,8 @@ class SomeCharm(CharmBase):
 ```
 
 Creating a new k8s lb service instead of patching the one created by juju
-Providing a service name is mandatory as it shouldn't be the same as default service, i.e., `app_name`.
+Service name is optional. If not provided, it defaults to {app_name}-lb.
+If provided and equal to app_name, it also defaults to {app_name}-lb to prevent conflicts with the Juju default service.
 ```python
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube.models.core_v1 import ServicePort
