@@ -250,7 +250,7 @@ class TestK8sServicePatch(unittest.TestCase):
             kind="Service",
             metadata=ObjectMeta(
                 namespace="test",
-                name="lb-test-charm",
+                name="lb-test-charm-lb",
                 labels={"app.kubernetes.io/name": "lb-test-charm"},
             ),
             spec=ServiceSpec(

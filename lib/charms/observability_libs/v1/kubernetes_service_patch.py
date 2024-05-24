@@ -207,7 +207,7 @@ class KubernetesServicePatch(Object):
         self.charm = charm
         self.service_name = service_name or self._app
         if self.service_name == self._app and service_type == "LoadBalancer":
-            self.service_name= f'{self._app}-lb'
+            self.service_name = f"{self._app}-lb"
         self.service_type = service_type
         self.service = self._service_object(
             ports,
@@ -260,6 +260,8 @@ class KubernetesServicePatch(Object):
         Returns:
             Service: A valid representation of a Kubernetes Service with the correct ports.
         """
+        if not service_name:
+            service_name = self._app
         labels = {"app.kubernetes.io/name": self._app}
         if additional_labels:
             labels.update(additional_labels)
