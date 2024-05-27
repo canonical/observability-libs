@@ -207,6 +207,8 @@ class KubernetesServicePatch(Object):
         super().__init__(charm, "kubernetes-service-patch")
         self.charm = charm
         self.service_name = service_name or self._app
+        # To avoid conflicts with the default Juju service, append "-lb" to the service name.
+        # The Juju application name is retained for the default service created by Juju.
         if self.service_name == self._app and service_type == "LoadBalancer":
             self.service_name = f"{self._app}-lb"
         self.service_type = service_type
@@ -364,15 +366,19 @@ class KubernetesServicePatch(Object):
             None
 
         Raises:
-            ApiError: If there is an issue with the Kubernetes API request.
+            ApiError: for deletion errors, excluding when the service is not found (404 Not Found).
         """
         client = Client()  # pyright: ignore
 
         try:
-            client.get(Service, self.service_name, namespace=self._namespace)
             client.delete(Service, self.service_name, namespace=self._namespace)
-        except ApiError:
-            return
+        except ApiError as e:
+            if e.status.code == 404:
+                # Service not found, so no action needed
+                pass
+            else:
+                # Re-raise for other statuses
+                raise
 
     @property
     def _app(self) -> str:
