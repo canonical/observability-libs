@@ -158,10 +158,6 @@ class CertHandler(Object):
             self.certificates.on.all_certificates_invalidated,  # pyright: ignore
             self._on_all_certificates_invalidated,
         )
-        self.framework.observe(
-            self.charm.on[self.certificates_relation_name].relation_broken,  # pyright: ignore
-            self._on_certificates_relation_broken,
-        )
 
         # Peer relation events
         self.framework.observe(
@@ -425,18 +421,17 @@ class CertHandler(Object):
         self.on.cert_changed.emit()  # pyright: ignore
 
     def _on_all_certificates_invalidated(self, event: AllCertificatesInvalidatedEvent) -> None:
-        # Do what you want with this information, probably remove all certificates
-        # Note: assuming "limit: 1" in metadata
-        self._generate_csr(overwrite=True, clear_cert=True)
-        self.on.cert_changed.emit()  # pyright: ignore
-
-    def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Clear the certificates data when removing the relation."""
+        # Note: assuming "limit: 1" in metadata
+        # The "certificates_relation_broken" event is converted to "all invalidated" custom 
+        # event by the tls-certificates library. Per convention, we let the lib manage the
+        # relation and we do not observe "certificates_relation_broken" directly.
         if self._peer_relation:
             private_key = self._private_key
             # This is a workaround for https://bugs.launchpad.net/juju/+bug/2024583
             self._peer_relation.data[self.charm.unit].clear()
             if private_key:
                 self._peer_relation.data[self.charm.unit].update({"private_key": private_key})
-
+        
+        # We do not generate a CSR here because the relation is gone.
         self.on.cert_changed.emit()  # pyright: ignore
