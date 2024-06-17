@@ -58,7 +58,7 @@ except ImportError as e:
 
 import logging
 
-from ops.charm import CharmBase, RelationBrokenEvent
+from ops.charm import CharmBase
 from ops.framework import EventBase, EventSource, Object, ObjectEvents
 from ops.jujuversion import JujuVersion
 from ops.model import Relation, Secret, SecretNotFoundError
@@ -572,7 +572,7 @@ class CertHandler(Object):
     def _on_all_certificates_invalidated(self, _: AllCertificatesInvalidatedEvent) -> None:
         """Clear all secrets data when removing the relation."""
         # Note: assuming "limit: 1" in metadata
-        # The "certificates_relation_broken" event is converted to "all invalidated" custom 
+        # The "certificates_relation_broken" event is converted to "all invalidated" custom
         # event by the tls-certificates library. Per convention, we let the lib manage the
         # relation and we do not observe "certificates_relation_broken" directly.
         self.vault.clear()
