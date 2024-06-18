@@ -2,8 +2,8 @@
 # See LICENSE file for licensing details.
 
 import unittest
-from unittest.mock import patch
 from textwrap import dedent
+from unittest.mock import patch
 
 from charms.observability_libs.v1.cert_handler import CertHandler
 from ops.charm import CharmBase
@@ -12,7 +12,8 @@ from ops.testing import Harness
 
 
 class StandInCharm(CharmBase):
-    meta = dedent("""
+    meta = dedent(
+        """
             name: test-charm
             peers:
               peers:
@@ -21,7 +22,8 @@ class StandInCharm(CharmBase):
               certificates:
                 interface: tls-certificates
                 limit: 1
-        """)
+        """
+    )
 
     def __init__(self, *args):
         super().__init__(*args)
