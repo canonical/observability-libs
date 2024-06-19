@@ -34,3 +34,7 @@ pythonPlatform = "All"
 minversion = "6.0"
 log_cli_level = "INFO"
 asyncio_mode = "auto"
+
+[tool.codespell]
+skip = ".git,.tox,build,venv*"
+ignore-words-list = "assertIn"
