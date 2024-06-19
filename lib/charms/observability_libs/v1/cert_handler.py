@@ -260,7 +260,13 @@ class Vault:
 
     def clear(self):
         """Clear the vault."""
-        self._backend.clear()
+        try:
+            self._backend.clear()
+        except SecretNotFoundError:
+            # guard against: https://github.com/canonical/observability-libs/issues/95
+            # this is fine, it might mean an earlier hook had already called .clear()
+            # not sure what exactly the root cause is, might be a juju bug
+            logger.debug("Could not clear vault: secret is gone already.")
 
 
 class CertHandler(Object):
