@@ -6,7 +6,7 @@
 This library is designed to enable developers to more simply patch the Kubernetes Service created
 by Juju during the deployment of a sidecar charm. When sidecar charms are deployed, Juju creates a
 service named after the application in the namespace (named after the Juju model). This service by
-default contains a "placeholder" port, which is 65536/TCP.
+default contains a "placeholder" port, which is 65535/TCP.
 
 When modifying the default set of resources managed by Juju, one must consider the lifecycle of the
 charm. In this case, any modifications to the default service (created during deployment), will be
