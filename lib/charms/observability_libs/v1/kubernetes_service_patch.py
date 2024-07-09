@@ -150,7 +150,7 @@ from typing import List, Literal, Optional, Union
 from lightkube import ApiError, Client  # pyright: ignore
 from lightkube.core import exceptions
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
-from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.models.meta_v1 import LabelSelector, ObjectMeta
 from lightkube.resources.core_v1 import Service
 from lightkube.types import PatchType
 from ops import UpgradeCharmEvent
@@ -365,12 +365,17 @@ class KubernetesServicePatch(Object):
             client = Client()  # pyright: ignore
 
             # Define a label selector to find services related to the app
-            selector = {"app.kubernetes.io/name": self._app}
+            selector = LabelSelector(matchLabels={"app.kubernetes.io/name": self._app})
 
             # Check if any service of type LoadBalancer exists
-            services = client.list(Service, namespace=self._namespace, labels=selector)
+            services = client.list(Service, namespace=self._namespace, labels=selector.to_dict())
             for service in services:
-                if not service.metadata or not service.metadata.name:
+                if (
+                    not service.metadata
+                    or not service.metadata.name
+                    or not service.spec
+                    or not service.spec.type
+                ):
                     logger.warning("Skipping resource with incomplete metadata.")
                     continue
                 if service.spec.type == "LoadBalancer":
