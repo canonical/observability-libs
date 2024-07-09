@@ -374,6 +374,7 @@ class TestK8sServicePatch(unittest.TestCase):
             charm.on.install.emit()
             self.assertEqual(patch.call_count, 1)
 
+    @patch(f"{CL_PATH}._namespace", "test")
     def test_given_initialized_charm_when_upgrade_event_then_event_listener_is_attached(self):
         charm = self.harness.charm
         with mock.patch(f"{CL_PATH}._patch") as patch:
