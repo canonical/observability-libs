@@ -376,7 +376,9 @@ class TestK8sServicePatch(unittest.TestCase):
 
     @patch(f"{CL_PATH}._namespace", "test")
     @patch(f"{MOD_PATH}.Client")
-    def test_given_initialized_charm_when_upgrade_event_then_event_listener_is_attached(self,client):
+    def test_given_initialized_charm_when_upgrade_event_then_event_listener_is_attached(
+        self, client
+    ):
         charm = self.harness.charm
         client.return_value = client
         client.list.return_value = []
