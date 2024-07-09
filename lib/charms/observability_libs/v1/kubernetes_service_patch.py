@@ -166,7 +166,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
@@ -227,7 +227,7 @@ class KubernetesServicePatch(Object):
         self.framework.observe(charm.on.install, self._patch)
         self.framework.observe(charm.on.upgrade_charm, self._patch)
         self.framework.observe(charm.on.update_status, self._patch)
-        self.framework.observe(charm.on.stop, self._remove_service)
+        self.framework.observe(charm.on.remove, self._remove_service)
 
         # apply user defined events
         if refresh_event:
@@ -372,10 +372,11 @@ class KubernetesServicePatch(Object):
 
         try:
             client.delete(Service, self.service_name, namespace=self._namespace)
+            logger.info(f'Service {self.service_name} deleted successfully.')
         except ApiError as e:
             if e.status.code == 404:
                 # Service not found, so no action needed
-                pass
+                return
             else:
                 # Re-raise for other statuses
                 raise
