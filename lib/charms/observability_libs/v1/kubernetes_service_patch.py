@@ -378,13 +378,13 @@ class KubernetesServicePatch(Object):
                     or not service.spec
                     or not service.spec.type
                 ):
-                    logger.warning("Service patch: skipping resource with incomplete metadata: %s.", service)
+                    logger.warning(
+                        "Service patch: skipping resource with incomplete metadata: %s.", service
+                    )
                     continue
                 if service.spec.type == "LoadBalancer":
                     client.delete(Service, service.metadata.name, namespace=self._namespace)
-                    logger.info(
-                        f"LoadBalancer service {service.metadata.name} deleted."
-                    )
+                    logger.info(f"LoadBalancer service {service.metadata.name} deleted.")
 
         # Continue the upgrade flow normally
         self._patch(event)
