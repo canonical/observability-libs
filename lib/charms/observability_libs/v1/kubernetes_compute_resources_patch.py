@@ -303,6 +303,8 @@ def _retry_on_condition(exception):
     """
     if isinstance(exception, ApiError) and str(exception.status.code) != "403":
         return True
+    if isinstance(exception, exceptions.ConfigError) or isinstance(exception, ValueError):
+        return True
     return False
 
 
