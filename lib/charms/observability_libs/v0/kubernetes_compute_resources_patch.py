@@ -31,7 +31,7 @@ that you also need to add `lightkube` and `lightkube-models` to your charm's `re
 
 ```shell
 cd some-charm
-charmcraft fetch-lib charms.observability_libs.v1.kubernetes_compute_resources_patch
+charmcraft fetch-lib charms.observability_libs.v0.kubernetes_compute_resources_patch
 cat << EOF >> requirements.txt
 lightkube
 lightkube-models
@@ -42,7 +42,7 @@ Then, to initialise the library:
 
 ```python
 # ...
-from charms.observability_libs.v1.kubernetes_compute_resources_patch import (
+from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     ResourceRequirements,
 )
@@ -140,7 +140,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 7
 
 
 _Decimal = Union[Decimal, float, str, int]  # types that are potentially convertible to Decimal
