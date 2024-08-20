@@ -307,8 +307,10 @@ def _retry_on_condition(exception):
         return True
     return False
 
+
 class PatchFailedError(Exception):
     """Raised when patching K8s resources requests and limits fails."""
+
 
 class K8sResourcePatchFailedEvent(EventBase):
     """Emitted when patching fails."""
@@ -412,12 +414,6 @@ class ResourcePatcher:
         Returns:
             bool: A boolean indicating if the service patch has been applied and is in effect.
         """
-        logger.debug(
-            "reqs=%s, templated=%s, actual=%s",
-            resource_reqs,
-            self.get_templated(),
-            self.get_actual(pod_name),
-        )
         return self.is_patched(resource_reqs) and equals_canonically(  # pyright: ignore
             resource_reqs, self.get_actual(pod_name)  # pyright: ignore
         )
@@ -428,7 +424,7 @@ class ResourcePatcher:
         # charm would be stuck in unknown/lost.
         if self.is_patched(resource_reqs):
             logger.debug(f"resource requests {resource_reqs} are already patched.")
-            return 
+            return
 
         self.client.patch(
             StatefulSet,
@@ -549,7 +545,6 @@ class KubernetesComputeResourcesPatch(Object):
 
             logger.exception(msg)
             raise PatchFailedError(msg) from e
-
 
         except ValueError as e:
             msg = f"Kubernetes resources patch failed: {e}"
