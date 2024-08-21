@@ -12,7 +12,7 @@ from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     is_valid_spec,
     sanitize_resource_spec_dict,
 )
-from ops import ActiveStatus, BlockedStatus, WaitingStatus
+from ops import BlockedStatus, WaitingStatus
 from ops.charm import CharmBase
 from ops.testing import Harness
 
@@ -90,7 +90,6 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 after = self.harness.charm.patch_failed_counter
                 self.assertGreater(after, before)
 
-   
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
     @mock.patch(
         "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.dry_run_apply",
