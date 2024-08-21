@@ -98,7 +98,8 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
         "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",
         MagicMock(return_value=True),
     )
-    def test_get_status_success(self):
+    @mock.patch("lightkube.core.client.GenericSyncClient")
+    def test_get_status_success(self, mock_client):
         self.harness.begin_with_initial_hooks()
         charm = self.harness.charm
         status, msg = charm.resources_patch.get_status()
@@ -120,7 +121,8 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             return_value=httpx.Response(status_code=401, content='{"message": "unauthorized"}')
         ),
     )
-    def test_get_status_failed(self):
+    @mock.patch("lightkube.core.client.GenericSyncClient")
+    def test_get_status_failed(self, mock_client):
         self.harness.begin_with_initial_hooks()
         charm = self.harness.charm
         status, msg = charm.resources_patch.get_status()

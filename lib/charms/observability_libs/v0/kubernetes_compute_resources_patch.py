@@ -452,7 +452,7 @@ class ResourcePatcher:
         """Returns a boolean to indicate whether a patch operation is in progress.
 
         Implementation follows a similar approach to `kubectl rollout status statefulset` to track the progress of a rollout.
-        Reference: https://github.com/kubernetes/kubectl/blob/master/pkg/polymorphichelpers/rollout_status.go
+        Reference: https://github.com/kubernetes/kubectl/blob/kubernetes-1.31.0/pkg/polymorphichelpers/rollout_status.go
         """
         sts = self.client.get(StatefulSet, name=self.statefulset_name, namespace=self.namespace)
         if sts.status is None:
