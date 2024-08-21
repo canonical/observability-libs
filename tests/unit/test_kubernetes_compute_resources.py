@@ -2,21 +2,19 @@
 # See LICENSE file for licensing details.
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import yaml
-from charms.observability_libs.v1.kubernetes_compute_resources_patch import (
+from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     adjust_resource_requirements,
-    is_valid_spec,
-    sanitize_resource_spec_dict,
 )
 from ops.charm import CharmBase
 from ops.testing import Harness
 
 from tests.unit.helpers import PROJECT_DIR
 
-CL_PATH = "charms.observability_libs.v1.kubernetes_compute_resources_patch.KubernetesComputeResourcesPatch"
+CL_PATH = "charms.observability_libs.v0.kubernetes_compute_resources_patch.KubernetesComputeResourcesPatch"
 
 
 class TestKubernetesComputeResourcesPatch(unittest.TestCase):
@@ -26,14 +24,13 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.resources_patch = KubernetesComputeResourcesPatch(
                 self,
                 "placeholder",
-                resource_reqs_func=lambda: adjust_resource_requirements(
-                    {
-                        "cpu": self.model.config.get("cpu"),
-                        "memory": self.model.config.get("memory"),
-                    },
-                    None,
-                ),
+                resource_reqs_func=lambda: adjust_resource_requirements(None, None),
             )
+            self.framework.observe(self.resources_patch.on.patch_failed, self._patch_failed)
+            self.patch_failed_counter = 0
+
+        def _patch_failed(self, _):
+            self.patch_failed_counter += 1
 
     def setUp(self) -> None:
         with open(PROJECT_DIR / "config.yaml") as config_file:
@@ -65,22 +62,13 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
     @mock.patch("lightkube.core.client.GenericSyncClient")
-    @mock.patch(
-        "charms.observability_libs.v1.kubernetes_compute_resources_patch.ResourcePatcher.apply",
-        MagicMock(return_value=None),
-    )
     def test_patch_is_applied_during_startup_sequence(self, client_mock):
         self.harness.begin_with_initial_hooks()
         self.assertGreater(client_mock.call_count, 0)
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
     @mock.patch("lightkube.core.client.GenericSyncClient")
-    @mock.patch(
-        "charms.observability_libs.v1.kubernetes_compute_resources_patch.ResourcePatcher.apply",
-        MagicMock(return_value=None),
-    )
-    def test_invalid_config_raises_exception(self, client_mock):
-
+    def test_invalid_config_emits_custom_event(self, client_mock):
         self.harness.begin_with_initial_hooks()
 
         # Test invalid quantity values
@@ -93,8 +81,53 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             ("1", "1Gx"),
         ]:
             with self.subTest(cpu=cpu, memory=memory):
-                with self.assertRaises(ValueError):
-                    self.harness.update_config({"cpu": cpu, "memory": memory})
+                before = self.harness.charm.patch_failed_counter
+                self.harness.update_config({"cpu": cpu, "memory": memory})
+                after = self.harness.charm.patch_failed_counter
+                self.assertGreater(after, before)
+
+    @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
+    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply",MagicMock(return_value=None))
+    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",MagicMock(return_value=True))
+    def test_get_status_success(self):
+        self.harness.begin_with_initial_hooks()
+        charm = self.harness.charm
+        status, msg = charm.resources_patch.get_status()
+        assert status == "succeeded"
+        assert msg == ""
+
+    @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
+    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",MagicMock(return_value=False))
+    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_in_progress",MagicMock(return_value=False))
+    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.dry_run_apply",MagicMock(return_value=httpx.Response(status_code=401, content='{"message": "unauthorized"}')))
+    def test_get_status_failed(self):
+        self.harness.begin_with_initial_hooks()
+        charm = self.harness.charm
+        status, msg = charm.resources_patch.get_status()
+        assert status == "failed"
+        assert msg == "unauthorized"
+
+    @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply",
+        MagicMock(return_value=None),
+    )
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",
+        MagicMock(return_value=False),
+    )
+    @mock.patch("lightkube.core.client.GenericSyncClient")
+    def test_get_status_in_progress(self, mock_client):
+        mock_client_get = MagicMock()
+        mock_client_get.metadata.generation = 2
+        mock_client_get.status.observedGeneration = 1
+        mock_client.return_value.request.return_value = mock_client_get
+
+        self.harness.begin_with_initial_hooks()
+        charm = self.harness.charm
+        status, msg = charm.resources_patch.get_status()
+        assert status == "in_progress"
+        assert msg == ""
 
 
 class TestResourceSpecDictValidation(unittest.TestCase):
