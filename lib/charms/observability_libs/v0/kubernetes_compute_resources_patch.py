@@ -352,6 +352,22 @@ class ResourcePatcher:
         self.container_name = container_name
         self.client = Client()  # pyright: ignore
 
+    def _raw_patch_data(self, resources: dict) -> dict:
+        return {
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": f"{self.container_name}",
+                                "resources": resources,
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+
     def _patched_delta(self, resource_reqs: ResourceRequirements) -> StatefulSet:
         statefulset = self.client.get(
             StatefulSet, name=self.statefulset_name, namespace=self.namespace
@@ -435,17 +451,17 @@ class ResourcePatcher:
             logger.error(msg)
             return True, msg
 
-        resource_reqs = ResourceRequirements(
-            limits=sanitize_resource_spec_dict(limits),  # type: ignore[arg-type]
-            requests=sanitize_resource_spec_dict(requests),  # type: ignore[arg-type]
-        )
+        resources = {
+            "limits": sanitize_resource_spec_dict(limits),
+            "requests": sanitize_resource_spec_dict(requests),
+        }
 
-        response = self.dry_run_apply(resource_reqs)
+        response = self.dry_run_apply(resources)
         if response.status_code == 403:
             return True, "Kubernetes resources patch failed: `juju trust` this application."
         if response.status_code != 200:
-            return True, response.json().get("message", "")
-
+            msg = f"Kubernetes resources patch failed: {response.json().get('message', '')}"
+            return True, msg
         return False, ""
 
     def is_in_progress(self) -> bool:
@@ -454,28 +470,36 @@ class ResourcePatcher:
         Implementation follows a similar approach to `kubectl rollout status statefulset` to track the progress of a rollout.
         Reference: https://github.com/kubernetes/kubectl/blob/kubernetes-1.31.0/pkg/polymorphichelpers/rollout_status.go
         """
-        sts = self.client.get(StatefulSet, name=self.statefulset_name, namespace=self.namespace)
-        if sts.status is None:
-            logger.debug("status is not yet available")
+        try:
+            sts = self.client.get(
+                StatefulSet, name=self.statefulset_name, namespace=self.namespace
+            )
+        except (ValueError, ApiError):
+            return False
+
+        if sts.status is None or sts.spec is None:
+            logger.debug("status/spec are not yet available")
             return False
         if sts.status.observedGeneration == 0 or (
-            sts.metadata and sts.metadata.generation > sts.status.observedGeneration  # type: ignore
+            sts.metadata
+            and sts.status.observedGeneration
+            and sts.metadata.generation
+            and sts.metadata.generation > sts.status.observedGeneration
         ):
             logger.debug("waiting for statefulset spec update to be observed...")
             return True
         if (
-            sts.spec
-            and sts.spec.replicas is not None
-            and sts.status.readyReplicas < sts.spec.replicas  # type: ignore
+            sts.spec.replicas is not None
+            and sts.status.readyReplicas is not None
+            and sts.status.readyReplicas < sts.spec.replicas
         ):
             logger.debug(
-                f"Waiting for {sts.spec.replicas-sts.status.readyReplicas} pods to be ready..."  # type: ignore
+                f"Waiting for {sts.spec.replicas-sts.status.readyReplicas} pods to be ready..."
             )
             return True
 
         if (
-            sts.spec
-            and sts.spec.updateStrategy
+            sts.spec.updateStrategy
             and sts.spec.updateStrategy.type == "rollingUpdate"
             and sts.spec.updateStrategy.rollingUpdate is not None
         ):
@@ -483,7 +507,7 @@ class ResourcePatcher:
                 sts.spec.replicas is not None
                 and sts.spec.updateStrategy.rollingUpdate.partition is not None
             ):
-                if sts.status.updatedReplicas < (  # type: ignore
+                if sts.status.updatedReplicas and sts.status.updatedReplicas < (
                     sts.spec.replicas - sts.spec.updateStrategy.rollingUpdate.partition
                 ):
                     logger.debug(
@@ -533,7 +557,7 @@ class ResourcePatcher:
             field_manager=self.__class__.__name__,
         )
 
-    def dry_run_apply(self, resource_reqs: ResourceRequirements):
+    def dry_run_apply(self, resources: dict):
         """Run a dry-run patch operation."""
         # Read the token for authentication
         with open(self.token_path, "r") as token_file:
@@ -543,7 +567,7 @@ class ResourcePatcher:
 
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/apply-patch+yaml",
+            "Content-Type": "application/strategic-merge-patch+json",
             "Accept": "application/json",
         }
 
@@ -551,8 +575,8 @@ class ResourcePatcher:
             response = client.patch(
                 url=patch_url,
                 headers=headers,
-                json=self._patched_delta(resource_reqs).__dict__,
-                params={"dryRun": "All"},
+                json=self._raw_patch_data(resources),
+                params={"dryRun": "All", "fieldManager": self.__class__.__name__},
             )
         return response
 
@@ -646,7 +670,7 @@ class KubernetesComputeResourcesPatch(Object):
                 reraise=True,
             ):
                 with attempt:
-                    logger.info(
+                    logger.debug(
                         f"attempt #{attempt.retry_state.attempt_number} to patch resource limits"
                     )
                     self.patcher.apply(resource_reqs)
@@ -729,17 +753,14 @@ class KubernetesComputeResourcesPatch(Object):
             - ("failed", "Failed due to missing permissions.")
             - ("in_progress", "Patch is in progress.")
         """
-        # succeeded
-        if self.is_ready():
-            return PatchState.succeeded, ""
-        # waiting
-        if self.patcher.is_in_progress():
-            return PatchState.in_progress, ""
         # failed
         is_failed, msg = self.patcher.is_failed(self.resource_reqs_func)
         if is_failed:
             return PatchState.failed, msg
-        # if none of the above, then it probably means nothing has been patched yet
+        # waiting
+        if self.patcher.is_in_progress():
+            return PatchState.in_progress, ""
+        # succeeded or nothing has been patched yet
         return PatchState.succeeded, ""
 
     @property
