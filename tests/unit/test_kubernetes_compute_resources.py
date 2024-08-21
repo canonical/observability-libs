@@ -2,12 +2,15 @@
 # See LICENSE file for licensing details.
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
+import httpx
 import yaml
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     adjust_resource_requirements,
+    is_valid_spec,
+    sanitize_resource_spec_dict,
 )
 from ops.charm import CharmBase
 from ops.testing import Harness
@@ -87,8 +90,14 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 self.assertGreater(after, before)
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
-    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply",MagicMock(return_value=None))
-    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",MagicMock(return_value=True))
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply",
+        MagicMock(return_value=None),
+    )
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",
+        MagicMock(return_value=True),
+    )
     def test_get_status_success(self):
         self.harness.begin_with_initial_hooks()
         charm = self.harness.charm
@@ -97,9 +106,20 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
         assert msg == ""
 
     @mock.patch.object(KubernetesComputeResourcesPatch, "_namespace", "test-namespace")
-    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",MagicMock(return_value=False))
-    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_in_progress",MagicMock(return_value=False))
-    @mock.patch("charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.dry_run_apply",MagicMock(return_value=httpx.Response(status_code=401, content='{"message": "unauthorized"}')))
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_ready",
+        MagicMock(return_value=False),
+    )
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_in_progress",
+        MagicMock(return_value=False),
+    )
+    @mock.patch(
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.dry_run_apply",
+        MagicMock(
+            return_value=httpx.Response(status_code=401, content='{"message": "unauthorized"}')
+        ),
+    )
     def test_get_status_failed(self):
         self.harness.begin_with_initial_hooks()
         charm = self.harness.charm
