@@ -118,7 +118,7 @@ import decimal
 import logging
 from decimal import Decimal
 from math import ceil, floor
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import tenacity
 from lightkube import ApiError, Client  # pyright: ignore
@@ -156,7 +156,9 @@ _Decimal = Union[Decimal, float, str, int]  # types that are potentially convert
 
 
 def adjust_resource_requirements(
-    limits: Optional[dict], requests: Optional[dict], adhere_to_requests: bool = True
+    limits: Optional[Dict[Any, Any]],
+    requests: Optional[Dict[Any, Any]],
+    adhere_to_requests: bool = True,
 ) -> ResourceRequirements:
     """Adjust resource limits so that `limits` and `requests` are consistent with each other.
 
