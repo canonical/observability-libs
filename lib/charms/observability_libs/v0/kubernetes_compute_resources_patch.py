@@ -120,7 +120,6 @@ from decimal import Decimal
 from math import ceil, floor
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-import httpx
 import tenacity
 from lightkube import ApiError, Client  # pyright: ignore
 from lightkube.core import exceptions
@@ -347,31 +346,11 @@ class ContainerNotFoundError(ValueError):
 class ResourcePatcher:
     """Helper class for patching a container's resource limits in a given StatefulSet."""
 
-    api_url = "https://kubernetes.default.svc"
-    token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-    ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-
     def __init__(self, namespace: str, statefulset_name: str, container_name: str):
         self.namespace = namespace
         self.statefulset_name = statefulset_name
         self.container_name = container_name
         self.client = Client()  # pyright: ignore
-
-    def _raw_patch_data(self, resources: dict) -> dict:
-        return {
-            "spec": {
-                "template": {
-                    "spec": {
-                        "containers": [
-                            {
-                                "name": f"{self.container_name}",
-                                "resources": resources,
-                            }
-                        ]
-                    }
-                }
-            }
-        }
 
     def _patched_delta(self, resource_reqs: ResourceRequirements) -> StatefulSet:
         statefulset = self.client.get(
@@ -456,17 +435,23 @@ class ResourcePatcher:
             logger.error(msg)
             return True, msg
 
-        resources = {
-            "limits": sanitize_resource_spec_dict(limits),
-            "requests": sanitize_resource_spec_dict(requests),
-        }
+        resource_reqs = ResourceRequirements(
+            limits=sanitize_resource_spec_dict(limits),  # type: ignore[arg-type]
+            requests=sanitize_resource_spec_dict(requests),  # type: ignore[arg-type]
+        )
 
-        response = self.dry_run_apply(resources)
-        if response.status_code == 403:
-            return True, "Kubernetes resources patch failed: `juju trust` this application."
-        if response.status_code != 200:
-            msg = f"Kubernetes resources patch failed: {response.json().get('message', '')}"
+        try:
+            self.dry_run_apply(resource_reqs)
+        except ApiError as e:
+            if e.status.code == 403:
+                msg = f"Kubernetes resources patch failed: `juju trust` this application. {e}"
+            else:
+                msg = f"Kubernetes resources patch failed: {e}"
             return True, msg
+        except ValueError as e:
+            msg = f"Kubernetes resources patch failed: {e}"
+            return True, msg
+
         return False, ""
 
     def is_in_progress(self) -> bool:
@@ -562,36 +547,23 @@ class ResourcePatcher:
             field_manager=self.__class__.__name__,
         )
 
-    def dry_run_apply(self, resources: dict):
+    def dry_run_apply(self, resource_reqs: ResourceRequirements):
         """Run a dry-run patch operation."""
-        # Read the token for authentication
-        with open(self.token_path, "r") as token_file:
-            token = token_file.read()
-
-        patch_url = f"{self.api_url}/apis/apps/v1/namespaces/{self.namespace}/statefulsets/{self.statefulset_name}"
-
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/strategic-merge-patch+json",
-            "Accept": "application/json",
-        }
-
-        # TODO: replace httpx with lightkube's client once https://github.com/gtsystem/lightkube/issues/73 is addressed
-        with httpx.Client(verify=self.ca_path) as client:
-            response = client.patch(
-                url=patch_url,
-                headers=headers,
-                json=self._raw_patch_data(resources),
-                params={"dryRun": "All", "fieldManager": self.__class__.__name__},
-            )
-        return response
+        self.client.patch(
+            StatefulSet,
+            self.statefulset_name,
+            self._patched_delta(resource_reqs),
+            namespace=self.namespace,
+            patch_type=PatchType.APPLY,
+            field_manager=self.__class__.__name__,
+            dry_run=True,
+        )
 
 
 class KubernetesComputeResourcesPatch(Object):
     """A utility for patching the Kubernetes compute resources set up by Juju."""
 
     on = K8sResourcePatchEvents()  # pyright: ignore
-    # TODO: revisit values once we know leadership lease behavior
     PATCH_RETRY_STOP = tenacity.stop_after_delay(20)
     PATCH_RETRY_WAIT = tenacity.wait_fixed(5)
     PATCH_RETRY_IF = tenacity.retry_if_exception(_retry_on_condition)
@@ -758,8 +730,8 @@ class KubernetesComputeResourcesPatch(Object):
             - BlockedStatus("Failed due to missing permissions")
             - WaitingStatus("Patch is in progress")
         """
-        is_failed, msg = self.patcher.is_failed(self.resource_reqs_func)
-        if is_failed:
+        failed, msg = self.patcher.is_failed(self.resource_reqs_func)
+        if failed:
             return BlockedStatus(msg)
         if self.patcher.is_in_progress():
             return WaitingStatus("waiting for resources patch to apply")

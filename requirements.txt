@@ -3,5 +3,5 @@
 
 ops
 PyYAML
-lightkube
+lightkube>=v0.15.4
 tenacity
