@@ -26,7 +26,7 @@ You can then observe the library's custom event and make use of the key and cert
 self.framework.observe(self.cert_handler.on.cert_changed, self._on_server_cert_changed)
 
 container.push(keypath, self.cert_handler.private_key)
-container.push(certpath, self.cert_handler.servert_cert)
+container.push(certpath, self.cert_handler.server_cert)
 ```
 
 Since this library uses [Juju Secrets](https://juju.is/docs/juju/secret) it requires Juju >= 3.0.3.
