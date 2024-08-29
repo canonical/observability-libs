@@ -467,7 +467,7 @@ class ResourcePatcher:
                 StatefulSet, name=self.statefulset_name, namespace=self.namespace
             )
         except (ValueError, ApiError) as e:
-            # Assumption: if there was a presistent issue, it'd have been caught in `is_failed`
+            # Assumption: if there was a persistent issue, it'd have been caught in `is_failed`
             # Wait until next run to try again.
             logger.error(f"Failed to fetch statefulset from K8s api: {e}")
             return False
