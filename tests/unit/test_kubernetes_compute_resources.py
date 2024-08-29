@@ -93,7 +93,7 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
                 self.assertGreater(after, before)
 
     @mock.patch(
-        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.dry_run_apply"
+        "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply"
     )
     @mock.patch("lightkube.core.client.GenericSyncClient")
     def test_get_status_failed(self, mock_client, mock_resource_patcher):

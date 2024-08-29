@@ -443,7 +443,7 @@ class ResourcePatcher:
         )
 
         try:
-            self.dry_run_apply(resource_reqs)
+            self.apply(resource_reqs, dry_run=True)
         except ApiError as e:
             if e.status.code == 403:
                 msg = f"Kubernetes resources patch failed: `juju trust` this application. {e}"
@@ -466,7 +466,10 @@ class ResourcePatcher:
             sts = self.client.get(
                 StatefulSet, name=self.statefulset_name, namespace=self.namespace
             )
-        except (ValueError, ApiError):
+        except (ValueError, ApiError) as e:
+            # Assumption: if there was a presistent issue, it'd have been caught in `is_failed`
+            # Wait until next run to try again.
+            logger.error(f"Failed to fetch statefulset from K8s api: {e}")
             return False
 
         if sts.status is None or sts.spec is None:
@@ -532,12 +535,12 @@ class ResourcePatcher:
             resource_reqs, self.get_actual(pod_name)  # pyright: ignore
         )
 
-    def apply(self, resource_reqs: ResourceRequirements) -> None:
+    def apply(self, resource_reqs: ResourceRequirements, dry_run=False) -> None:
         """Patch the Kubernetes resources created by Juju to limit cpu or mem."""
         # Need to ignore invalid input, otherwise the StatefulSet gives "FailedCreate" and the
         # charm would be stuck in unknown/lost.
-        if self.is_patched(resource_reqs):
-            logger.debug(f"resource requests {resource_reqs} are already patched.")
+        if not dry_run and self.is_patched(resource_reqs):
+            logger.debug(f"Resource requests are already patched: {resource_reqs}")
             return
 
         self.client.patch(
@@ -547,18 +550,7 @@ class ResourcePatcher:
             namespace=self.namespace,
             patch_type=PatchType.APPLY,
             field_manager=self.__class__.__name__,
-        )
-
-    def dry_run_apply(self, resource_reqs: ResourceRequirements):
-        """Run a dry-run patch operation."""
-        self.client.patch(
-            StatefulSet,
-            self.statefulset_name,
-            self._patched_delta(resource_reqs),
-            namespace=self.namespace,
-            patch_type=PatchType.APPLY,
-            field_manager=self.__class__.__name__,
-            dry_run=True,
+            dry_run=dry_run,
         )
 
 
