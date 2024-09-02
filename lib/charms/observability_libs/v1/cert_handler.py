@@ -59,7 +59,7 @@ except ImportError as e:
 import logging
 
 from ops.charm import CharmBase
-from ops.framework import EventBase, EventSource, Object, ObjectEvents
+from ops.framework import BoundEvent, EventBase, EventSource, Object, ObjectEvents
 from ops.jujuversion import JujuVersion
 from ops.model import Relation, Secret, SecretNotFoundError
 
@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
-LIBPATCH = 11
+LIBPATCH = 12
 
 VAULT_SECRET_LABEL = "cert-handler-private-vault"
 
@@ -283,6 +283,7 @@ class CertHandler(Object):
         peer_relation_name: str = "peers",
         cert_subject: Optional[str] = None,
         sans: Optional[List[str]] = None,
+        refresh_events: Optional[List[BoundEvent]] = None,
     ):
         """CertHandler is used to wrap TLS Certificates management operations for charms.
 
@@ -299,6 +300,10 @@ class CertHandler(Object):
                 Must match metadata.yaml.
             cert_subject: Custom subject. Name collisions are under the caller's responsibility.
             sans: DNS names. If none are given, use FQDN.
+            refresh_events: an optional list of bound events which
+                will be observed to overwrite the current CSR with a newly generated one.
+                If there are no changes in the CSR request, no changes will happen to the
+                CSR or the certificate.
         """
         super().__init__(charm, key)
         self.charm = charm
@@ -354,6 +359,22 @@ class CertHandler(Object):
             self.charm.on.upgrade_charm,  # pyright: ignore
             self._on_upgrade_charm,
         )
+
+        if refresh_events:
+            for ev in refresh_events:
+                self.framework.observe(ev, self._on_refresh_event)
+
+    def _on_refresh_event(self, _):
+        # Renew only if there are CSR changes
+        curr_csr = self._csr.encode()
+        new_csr = generate_csr(
+            private_key=self.private_key.encode(),
+            subject=self.cert_subject,
+            sans_dns=self.sans_dns,
+            sans_ip=self.sans_ip,
+        )
+        if curr_csr != new_csr:
+            self._generate_csr(renew=True)
 
     def _on_upgrade_charm(self, _):
         has_privkey = self.vault.get_value("private-key")
