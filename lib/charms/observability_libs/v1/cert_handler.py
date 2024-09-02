@@ -366,14 +366,14 @@ class CertHandler(Object):
 
     def _on_refresh_event(self, _):
         # Renew only if there are CSR changes
-        curr_csr = self._csr.encode()
+        curr_csr = self._csr.encode() if self._csr else None
         new_csr = generate_csr(
             private_key=self.private_key.encode(),
             subject=self.cert_subject,
             sans_dns=self.sans_dns,
             sans_ip=self.sans_ip,
         )
-        if curr_csr != new_csr:
+        if curr_csr is not None and curr_csr != new_csr:
             self._generate_csr(renew=True)
 
     def _on_upgrade_charm(self, _):
