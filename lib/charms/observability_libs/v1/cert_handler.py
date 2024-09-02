@@ -301,9 +301,9 @@ class CertHandler(Object):
             cert_subject: Custom subject. Name collisions are under the caller's responsibility.
             sans: DNS names. If none are given, use FQDN.
             refresh_events: an optional list of bound events which
-                will be observed to overwrite the current CSR with a newly generated one.
-                If there are no changes in the CSR request, no changes will happen to the
-                CSR or the certificate.
+                will be observed to replace the current CSR with a new one
+                if there are any changes in the CSR request. Then, subsequently, replace the
+                its corresponding certificate with a new one.
         """
         super().__init__(charm, key)
         self.charm = charm
