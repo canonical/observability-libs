@@ -2,9 +2,10 @@
 # See LICENSE file for licensing details.
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import httpx
+import tenacity
 import yaml
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
@@ -16,10 +17,20 @@ from lightkube import ApiError
 from ops import BlockedStatus, WaitingStatus
 from ops.charm import CharmBase
 from ops.testing import Harness
+from pytest import fixture
 
 from tests.unit.helpers import PROJECT_DIR
 
 CL_PATH = "charms.observability_libs.v0.kubernetes_compute_resources_patch.KubernetesComputeResourcesPatch"
+
+
+@fixture(autouse=True)
+def patch_retry():
+    with patch.multiple(
+        KubernetesComputeResourcesPatch,
+        PATCH_RETRY_STOP=tenacity.stop_after_delay(0),
+    ):
+        yield
 
 
 class TestKubernetesComputeResourcesPatch(unittest.TestCase):

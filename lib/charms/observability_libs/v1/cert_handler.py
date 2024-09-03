@@ -283,7 +283,7 @@ class CertHandler(Object):
         peer_relation_name: str = "peers",
         cert_subject: Optional[str] = None,
         sans: Optional[List[str]] = None,
-        refresh_events: Optional[List[BoundEvent]] = None,
+        refresh_events: List[BoundEvent] = [],
     ):
         """CertHandler is used to wrap TLS Certificates management operations for charms.
 
@@ -302,8 +302,8 @@ class CertHandler(Object):
             sans: DNS names. If none are given, use FQDN.
             refresh_events: an optional list of bound events which
                 will be observed to replace the current CSR with a new one
-                if there are any changes in the CSR request. Then, subsequently, replace the
-                its corresponding certificate with a new one.
+                if there are any changes in the CSR request. Then, subsequently,
+                replace its corresponding certificate with a new one.
         """
         super().__init__(charm, key)
         self.charm = charm
@@ -360,9 +360,8 @@ class CertHandler(Object):
             self._on_upgrade_charm,
         )
 
-        if refresh_events:
-            for ev in refresh_events:
-                self.framework.observe(ev, self._on_refresh_event)
+        for ev in refresh_events:
+            self.framework.observe(ev, self._on_refresh_event)
 
     def _on_refresh_event(self, _):
         # Renew only if there are CSR changes
