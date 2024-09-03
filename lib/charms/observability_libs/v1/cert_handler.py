@@ -302,8 +302,8 @@ class CertHandler(Object):
             sans: DNS names. If none are given, use FQDN.
             refresh_events: an optional list of bound events which
                 will be observed to replace the current CSR with a new one
-                if there are any changes in the CSR request. Then, subsequently,
-                replace its corresponding certificate with a new one.
+                if there are changes in the CSR's DNS SANs, IP SANs, subject, or private key.
+                Then, subsequently, replace its corresponding certificate with a new one.
         """
         super().__init__(charm, key)
         self.charm = charm
@@ -364,7 +364,12 @@ class CertHandler(Object):
             self.framework.observe(ev, self._on_refresh_event)
 
     def _on_refresh_event(self, _):
-        # Renew only if there are CSR changes
+        """Replace the latest current CSR with a new one if there are any CSR changes.
+
+        The following CSR changes will trigger a certificate renewal: DNS SANs, IP SANs, subject, and private key changes.
+        Instead of individually comparing the new values of each field with those from the current CSR, we will compare the
+        entire current CSR with a newly generated one, populated with the latest values, to determine if renewal is needed.
+        """
         curr_csr = self._csr.encode() if self._csr else None
         new_csr = generate_csr(
             private_key=self.private_key.encode(),
