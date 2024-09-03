@@ -59,7 +59,7 @@ except ImportError as e:
 import logging
 
 from ops.charm import CharmBase
-from ops.framework import BoundEvent, EventBase, EventSource, Object, ObjectEvents
+from ops.framework import BoundEvent, EventBase, EventSource, Object, ObjectEvents, StoredState
 from ops.jujuversion import JujuVersion
 from ops.model import Relation, Secret, SecretNotFoundError
 
@@ -273,6 +273,7 @@ class CertHandler(Object):
     """A wrapper for the requirer side of the TLS Certificates charm library."""
 
     on = CertHandlerEvents()  # pyright: ignore
+    _stored = StoredState()
 
     def __init__(
         self,
@@ -302,10 +303,14 @@ class CertHandler(Object):
             sans: DNS names. If none are given, use FQDN.
             refresh_events: an optional list of bound events which
                 will be observed to replace the current CSR with a new one
-                if there are changes in the CSR's DNS SANs, IP SANs, subject, or private key.
+                if there are changes in the CSR's DNS SANs or IP SANs.
                 Then, subsequently, replace its corresponding certificate with a new one.
         """
         super().__init__(charm, key)
+        self._stored.set_default(
+            current_sans_ip=None,
+            current_sans_dns=None,
+        )
         self.charm = charm
 
         # We need to sanitize the unit name, otherwise route53 complains:
@@ -365,20 +370,8 @@ class CertHandler(Object):
                 self.framework.observe(ev, self._on_refresh_event)
 
     def _on_refresh_event(self, _):
-        """Replace the latest current CSR with a new one if there are any CSR changes.
-
-        The following CSR changes will trigger a certificate renewal: DNS SANs, IP SANs, subject, and private key changes.
-        Instead of individually comparing the new values of each field with those from the current CSR, we will compare the
-        entire current CSR with a newly generated one, populated with the latest values, to determine if renewal is needed.
-        """
-        curr_csr = self._csr.encode() if self._csr else None
-        new_csr = generate_csr(
-            private_key=self.private_key.encode(),
-            subject=self.cert_subject,
-            sans_dns=self.sans_dns,
-            sans_ip=self.sans_ip,
-        )
-        if curr_csr is not None and curr_csr != new_csr:
+        """Replace the latest current CSR with a new one if there are any SANs changes."""
+        if self.sans_ip != self._stored.sans_ip or self.sans_dns != self._stored.sans_dns:
             self._generate_csr(renew=True)
 
     def _on_upgrade_charm(self, _):
@@ -509,6 +502,9 @@ class CertHandler(Object):
                     self.sans_ip,
                 )
                 self.certificates.request_certificate_creation(certificate_signing_request=csr)
+
+            self._stored.sans_ip = self.sans_ip
+            self._stored.sans_dns = self.sans_dns
 
         if clear_cert:
             self.vault.clear()
