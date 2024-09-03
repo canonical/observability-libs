@@ -283,7 +283,7 @@ class CertHandler(Object):
         peer_relation_name: str = "peers",
         cert_subject: Optional[str] = None,
         sans: Optional[List[str]] = None,
-        refresh_events: List[BoundEvent] = [],
+        refresh_events: Optional[List[BoundEvent]] = None,
     ):
         """CertHandler is used to wrap TLS Certificates management operations for charms.
 
@@ -360,8 +360,9 @@ class CertHandler(Object):
             self._on_upgrade_charm,
         )
 
-        for ev in refresh_events:
-            self.framework.observe(ev, self._on_refresh_event)
+        if refresh_events:
+            for ev in refresh_events:
+                self.framework.observe(ev, self._on_refresh_event)
 
     def _on_refresh_event(self, _):
         """Replace the latest current CSR with a new one if there are any CSR changes.
