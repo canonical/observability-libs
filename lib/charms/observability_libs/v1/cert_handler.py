@@ -307,9 +307,10 @@ class CertHandler(Object):
                 Then, subsequently, replace its corresponding certificate with a new one.
         """
         super().__init__(charm, key)
+        # use StoredState to store the hash of the CSR
+        # to potentially trigger a CSR renewal on `refresh_events`
         self._stored.set_default(
-            current_sans_ip=None,
-            current_sans_dns=None,
+            csr_hash=None,
         )
         self.charm = charm
 
@@ -371,7 +372,7 @@ class CertHandler(Object):
 
     def _on_refresh_event(self, _):
         """Replace the latest current CSR with a new one if there are any SANs changes."""
-        if self.sans_ip != self._stored.sans_ip or self.sans_dns != self._stored.sans_dns:
+        if self._stored.csr_hash != self._csr_hash:
             self._generate_csr(renew=True)
 
     def _on_upgrade_charm(self, _):
@@ -439,6 +440,20 @@ class CertHandler(Object):
         return True
 
     @property
+    def _csr_hash(self) -> int:
+        """A hash of the config that constructs the CSR.
+
+        Only include here the config options that, should they change, should trigger a renewal of
+        the CSR.
+        """
+        return hash(
+            (
+                tuple(self.sans_dns),
+                tuple(self.sans_ip),
+            )
+        )
+
+    @property
     def available(self) -> bool:
         """Return True if all certs are available in relation data; False otherwise."""
         return (
@@ -503,8 +518,7 @@ class CertHandler(Object):
                 )
                 self.certificates.request_certificate_creation(certificate_signing_request=csr)
 
-            self._stored.sans_ip = self.sans_ip
-            self._stored.sans_dns = self.sans_dns
+            self._stored.csr_hash = self._csr_hash
 
         if clear_cert:
             self.vault.clear()
