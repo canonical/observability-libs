@@ -1,3 +1,5 @@
+import datetime
+import json
 import socket
 import sys
 from contextlib import contextmanager
@@ -7,6 +9,8 @@ from unittest.mock import patch
 import pytest
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtensionOID
 from ops import CharmBase
 from scenario import Context, PeerRelation, Relation, State
@@ -41,6 +45,71 @@ class MyCharm(CharmBase):
         By default, it returns None.
         """
         return None
+
+
+def generate_certificate_and_key():
+    """Generate certificate and CA to use for tests."""
+    # Generate private key
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    # Generate CA certificate
+    ca_subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(x509.NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, "California"),
+            x509.NameAttribute(x509.NameOID.LOCALITY_NAME, "San Francisco"),
+            x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, "Example CA"),
+            x509.NameAttribute(x509.NameOID.COMMON_NAME, "example.com"),
+        ]
+    )
+
+    ca_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ca_subject)
+        .issuer_name(issuer)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.utcnow())
+        .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .sign(private_key, hashes.SHA256())
+    )
+
+    # Generate server certificate
+    server_subject = x509.Name(
+        [
+            x509.NameAttribute(x509.NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, "California"),
+            x509.NameAttribute(x509.NameOID.LOCALITY_NAME, "San Francisco"),
+            x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, "Example Server"),
+            x509.NameAttribute(x509.NameOID.COMMON_NAME, "server.example.com"),
+        ]
+    )
+
+    server_cert = (
+        x509.CertificateBuilder()
+        .subject_name(server_subject)
+        .issuer_name(ca_subject)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.utcnow())
+        .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=30))
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName("server.example.com")]), critical=False
+        )
+        .sign(private_key, hashes.SHA256())
+    )
+
+    # Convert to PEM format
+    ca_cert_pem = ca_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+    server_cert_pem = server_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+    private_key_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+
+    return ca_cert_pem, server_cert_pem, private_key_pem
 
 
 def get_csr_obj(csr: str):
@@ -174,3 +243,30 @@ def test_csr_no_change(ctx, certificates):
             csr = get_csr_obj(charm.ch._csr)
             assert get_sans_from_csr(csr) == {socket.getfqdn()}
             assert renew_patch.call_count == 0
+
+
+def test_chain_contains_server_cert(ctx, certificates):
+    ca_cert_pem, server_cert_pem, _ = generate_certificate_and_key()
+
+    certificates = certificates.replace(
+        remote_app_data={
+            "certificates": json.dumps(
+                [
+                    {
+                        "certificate": server_cert_pem,
+                        "ca": ca_cert_pem,
+                        "chain": [ca_cert_pem],
+                        "certificate_signing_request": "csr",
+                    }
+                ],
+            )
+        },
+        local_unit_data={
+            "certificate_signing_requests": json.dumps([{"certificate_signing_request": "csr"}])
+        },
+    )
+
+    with ctx.manager("update_status", State(leader=True, relations=[certificates])) as mgr:
+        mgr.run()
+        assert server_cert_pem in mgr.charm.ch.chain
+        assert x509.load_pem_x509_certificate(mgr.charm.ch.chain.encode(), default_backend())
