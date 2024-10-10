@@ -32,6 +32,7 @@ container.push(certpath, self.cert_handler.server_cert)
 Since this library uses [Juju Secrets](https://juju.is/docs/juju/secret) it requires Juju >= 3.0.3.
 """
 import abc
+import hashlib
 import ipaddress
 import json
 import socket
@@ -385,7 +386,10 @@ class CertHandler(Object):
 
     def _refresh_csr_if_needed(self):
         """Refresh the latest current CSR with a new one if there are any SANs changes."""
-        if self._stored.csr_hash is not None and self._stored.csr_hash != self._csr_hash:
+        if (
+            self._stored.csr_hash is not None
+            and self._stored.csr_hash != self._csr_hash
+        ):
             self._generate_csr(renew=True)
 
     def _migrate_vault(self):
@@ -446,7 +450,7 @@ class CertHandler(Object):
         Only include here the config options that, should they change, should trigger a renewal of
         the CSR.
         """
-        return hash(
+        return self._stable_hash(
             (
                 tuple(self.sans_dns),
                 tuple(self.sans_ip),
@@ -638,3 +642,6 @@ class CertHandler(Object):
             logger.debug(msg)
             return False
         return True
+
+    def _stable_hash(self, data):
+        return hashlib.sha256(str(data).encode()).hexdigest()
