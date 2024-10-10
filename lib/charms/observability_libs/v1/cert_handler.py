@@ -386,10 +386,7 @@ class CertHandler(Object):
 
     def _refresh_csr_if_needed(self):
         """Refresh the latest current CSR with a new one if there are any SANs changes."""
-        if (
-            self._stored.csr_hash is not None
-            and self._stored.csr_hash != self._csr_hash
-        ):
+        if self._stored.csr_hash is not None and self._stored.csr_hash != self._csr_hash:
             self._generate_csr(renew=True)
 
     def _migrate_vault(self):
@@ -444,7 +441,7 @@ class CertHandler(Object):
         return True
 
     @property
-    def _csr_hash(self) -> int:
+    def _csr_hash(self) -> str:
         """A hash of the config that constructs the CSR.
 
         Only include here the config options that, should they change, should trigger a renewal of
