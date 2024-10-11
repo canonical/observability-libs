@@ -318,8 +318,8 @@ class CertHandler(Object):
 
         # Use fqdn only if no SANs were given, and drop empty/duplicate SANs
         sans = list(set(filter(None, (sans or [socket.getfqdn()]))))
-        self.sans_ip = sorted(list(filter(is_ip_address, sans)))
-        self.sans_dns = sorted(list(filterfalse(is_ip_address, sans)))
+        self.sans_ip = sorted(filter(is_ip_address, sans))
+        self.sans_dns = sorted(filterfalse(is_ip_address, sans))
 
         if self._check_juju_supports_secrets():
             vault_backend = _SecretVaultBackend(charm, secret_label=VAULT_SECRET_LABEL)
