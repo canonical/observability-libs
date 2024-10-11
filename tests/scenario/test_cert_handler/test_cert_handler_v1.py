@@ -191,11 +191,14 @@ def test_cert_joins_peer_vault_backend(ctx_juju2, certificates, leader):
         assert mgr.charm.ch.private_key
 
 
+# CertHandler generates a cert on `config_changed` event
 @pytest.mark.parametrize(
-    "event,generate_call_count",
+    "event,expected_generate_calls",
     (("update_status", 0), ("start", 0), ("install", 0), ("config_changed", 1)),
 )
-def test_no_renew_if_no_initial_csr_was_generated(event, generate_call_count, ctx, certificates):
+def test_no_renew_if_no_initial_csr_was_generated(
+    event, expected_generate_calls, ctx, certificates
+):
     with _cert_renew_patch() as renew_patch:
         with _cert_generate_patch() as generate_patch:
             with ctx.manager(
@@ -205,7 +208,7 @@ def test_no_renew_if_no_initial_csr_was_generated(event, generate_call_count, ct
 
                 mgr.run()
                 assert renew_patch.call_count == 0
-                assert generate_patch.call_count == generate_call_count
+                assert generate_patch.call_count == expected_generate_calls
 
 
 @patch.object(CertHandler, "_stored", MagicMock())

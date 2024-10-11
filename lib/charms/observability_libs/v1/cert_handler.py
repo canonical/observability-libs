@@ -318,6 +318,7 @@ class CertHandler(Object):
 
         # Use fqdn only if no SANs were given, and drop empty/duplicate SANs
         sans = list(set(filter(None, (sans or [socket.getfqdn()]))))
+        # sort SANS lists to avoid unnecessary csr renewals during reconciliation
         self.sans_ip = sorted(filter(is_ip_address, sans))
         self.sans_dns = sorted(filterfalse(is_ip_address, sans))
 
@@ -369,6 +370,10 @@ class CertHandler(Object):
                 "DEPRECATION WARNING. `refresh_events` is now deprecated. CertHandler will automatically refresh the CSR when necessary."
             )
 
+        self._reconcile()
+
+    def _reconcile(self):
+        """Run all logic that is independent of what event we're processing."""
         self._refresh_csr_if_needed()
 
     def _on_upgrade_charm(self, _):
@@ -385,7 +390,7 @@ class CertHandler(Object):
             self._generate_csr(renew=True)
 
     def _refresh_csr_if_needed(self):
-        """Refresh the latest current CSR with a new one if there are any SANs changes."""
+        """Refresh the current CSR with a new one if there are any SANs changes."""
         if self._stored.csr_hash is not None and self._stored.csr_hash != self._csr_hash:
             self._generate_csr(renew=True)
 
@@ -447,7 +452,11 @@ class CertHandler(Object):
         Only include here the config options that, should they change, should trigger a renewal of
         the CSR.
         """
-        return self._stable_hash(
+
+        def _stable_hash(data):
+            return hashlib.sha256(str(data).encode()).hexdigest()
+
+        return _stable_hash(
             (
                 tuple(self.sans_dns),
                 tuple(self.sans_ip),
@@ -639,6 +648,3 @@ class CertHandler(Object):
             logger.debug(msg)
             return False
         return True
-
-    def _stable_hash(self, data):
-        return hashlib.sha256(str(data).encode()).hexdigest()
