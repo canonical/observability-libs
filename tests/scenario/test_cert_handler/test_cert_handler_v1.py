@@ -4,7 +4,7 @@ import socket
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from cryptography import x509
@@ -36,7 +36,7 @@ class MyCharm(CharmBase):
         if hostname := self._mock_san:
             sans.append(hostname)
 
-        self.ch = CertHandler(self, key="ch", sans=sans, refresh_events=[self.on.config_changed])
+        self.ch = CertHandler(self, key="ch", sans=sans)
 
     @property
     def _mock_san(self):
@@ -145,6 +145,14 @@ def _cert_renew_patch():
         yield patcher
 
 
+@contextmanager
+def _cert_generate_patch():
+    with patch(
+        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.request_certificate_creation"
+    ) as patcher:
+        yield patcher
+
+
 @pytest.mark.parametrize("leader", (True, False))
 def test_cert_joins(ctx, certificates, leader):
     with ctx.manager(
@@ -183,46 +191,54 @@ def test_cert_joins_peer_vault_backend(ctx_juju2, certificates, leader):
         assert mgr.charm.ch.private_key
 
 
-def test_renew_csr_on_sans_change(ctx, certificates):
-    # generate a CSR
+# CertHandler generates a cert on `config_changed` event
+@pytest.mark.parametrize(
+    "event,expected_generate_calls",
+    (("update_status", 0), ("start", 0), ("install", 0), ("config_changed", 1)),
+)
+def test_no_renew_if_no_initial_csr_was_generated(
+    event, expected_generate_calls, ctx, certificates
+):
+    with _cert_renew_patch() as renew_patch:
+        with _cert_generate_patch() as generate_patch:
+            with ctx.manager(
+                event,
+                State(leader=True, relations=[certificates]),
+            ) as mgr:
+
+                mgr.run()
+                assert renew_patch.call_count == 0
+                assert generate_patch.call_count == expected_generate_calls
+
+
+@patch.object(CertHandler, "_stored", MagicMock())
+@pytest.mark.parametrize(
+    "is_relation, event",
+    (
+        (False, "start"),
+        (True, "changed_event"),
+        (False, "config_changed"),
+    ),
+)
+def test_csr_renew_on_any_event(is_relation, event, ctx, certificates):
     with ctx.manager(
-        certificates.joined_event,
-        State(leader=True, relations=[certificates]),
+        getattr(certificates, event) if is_relation else event,
+        State(
+            leader=True,
+            relations=[certificates],
+        ),
     ) as mgr:
         charm = mgr.charm
         state_out = mgr.run()
         orig_csr = get_csr_obj(charm.ch._csr)
         assert get_sans_from_csr(orig_csr) == {socket.getfqdn()}
 
-    # trigger a config_changed with a modified SAN
     with _sans_patch():
-        with ctx.manager("config_changed", state_out) as mgr:
+        with ctx.manager("update_status", state_out) as mgr:
             charm = mgr.charm
             state_out = mgr.run()
             csr = get_csr_obj(charm.ch._csr)
-            # assert CSR contains updated SAN
             assert get_sans_from_csr(csr) == {socket.getfqdn(), MOCK_HOSTNAME}
-
-
-def test_csr_no_change_on_wrong_refresh_event(ctx, certificates):
-    with _cert_renew_patch() as renew_patch:
-        with ctx.manager(
-            "config_changed",
-            State(leader=True, relations=[certificates]),
-        ) as mgr:
-            charm = mgr.charm
-            state_out = mgr.run()
-            orig_csr = get_csr_obj(charm.ch._csr)
-            assert get_sans_from_csr(orig_csr) == {socket.getfqdn()}
-
-    with _sans_patch():
-        with _cert_renew_patch() as renew_patch:
-            with ctx.manager("update_status", state_out) as mgr:
-                charm = mgr.charm
-                state_out = mgr.run()
-                csr = get_csr_obj(charm.ch._csr)
-                assert get_sans_from_csr(csr) == {socket.getfqdn()}
-                assert renew_patch.call_count == 0
 
 
 def test_csr_no_change(ctx, certificates):
