@@ -397,14 +397,22 @@ class TestK8sServicePatch(unittest.TestCase):
         # Patch should work even on a non-leader unit
         # Check we call the patch method on the client with the correct arguments
         client_patch.assert_called_with(
-            Service, "test-charm", charm.service_patch.service, patch_type=PatchType.MERGE
+            Service,
+            "test-charm",
+            charm.service_patch.service,
+            patch_type=PatchType.APPLY,
+            field_manager=charm.app.name,
         )
 
         self.harness.set_leader(True)
         charm.on.install.emit()
         # Check we call the patch method on the client with the correct arguments
         client_patch.assert_called_with(
-            Service, "test-charm", charm.service_patch.service, patch_type=PatchType.MERGE
+            Service,
+            "test-charm",
+            charm.service_patch.service,
+            patch_type=PatchType.APPLY,
+            field_manager=charm.app.name,
         )
 
         client_patch.side_effect = _FakeApiError(403)
