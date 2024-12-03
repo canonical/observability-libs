@@ -7,7 +7,7 @@
 The `kubernetes_service_patch` library is DEPRECATED for patching the Kubernetes service created
 by Juju during the deployment of a charm and `ops.Unit.set_ports` functionality should be used for that instead.
 
-This library is intended to only be used to enable developers to create/patch Kubernetes ``LoadBalancer`` services.
+This library is intended to only be used to enable developers to create/patch Kubernetes `LoadBalancer` services.
 
 When initialised, this library binds a handler to the parent charm's `install` and `upgrade_charm`
 events which applies the patch to the cluster. This should ensure that the service ports are
