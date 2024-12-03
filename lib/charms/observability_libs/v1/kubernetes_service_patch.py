@@ -3,14 +3,11 @@
 
 """# KubernetesServicePatch Library.
 
-This library is designed to enable developers to more simply patch the Kubernetes Service created
-by Juju during the deployment of a sidecar charm. When sidecar charms are deployed, Juju creates a
-service named after the application in the namespace (named after the Juju model). This service by
-default contains a "placeholder" port, which is 65535/TCP.
+[DEPRECATED!]
+The `kubernetes_service_patch` library is DEPRECATED for `ClusterIP` services (i.e  Kubernetes services created
+by Juju during the deployment of a charm) and `ops.Unit.set_ports` functionality should be used instead.
 
-When modifying the default set of resources managed by Juju, one must consider the lifecycle of the
-charm. In this case, any modifications to the default service (created during deployment), will be
-overwritten during a charm upgrade.
+This library is intended to only be used to enable developers to patch Kubernetes ``LoadBalancer`` services.
 
 When initialised, this library binds a handler to the parent charm's `install` and `upgrade_charm`
 events which applies the patch to the cluster. This should ensure that the service ports are
@@ -39,21 +36,6 @@ EOF
 ```
 
 Then, to initialise the library:
-
-For `ClusterIP` services:
-
-```python
-# ...
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube.models.core_v1 import ServicePort
-
-class SomeCharm(CharmBase):
-  def __init__(self, *args):
-    # ...
-    port = ServicePort(443, name=f"{self.app.name}")
-    self.service_patcher = KubernetesServicePatch(self, [port])
-    # ...
-```
 
 For `LoadBalancer`/`NodePort` services:
 
@@ -85,7 +67,7 @@ class SomeCharm(CharmBase):
     tcp = ServicePort(443, name=f"{self.app.name}-tcp", protocol="TCP")
     udp = ServicePort(443, name=f"{self.app.name}-udp", protocol="UDP")
     sctp = ServicePort(443, name=f"{self.app.name}-sctp", protocol="SCTP")
-    self.service_patcher = KubernetesServicePatch(self, [tcp, udp, sctp])
+    self.service_patcher = KubernetesServicePatch(self, [tcp, udp, sctp], "LoadBalancer")
     # ...
 ```
 
@@ -104,6 +86,7 @@ class SomeCharm(CharmBase):
     self.service_patcher = KubernetesServicePatch(
         self,
         [port],
+        "LoadBalancer",
         refresh_event=self.on.config_changed
     )
     # ...
@@ -167,13 +150,13 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 12
+LIBPATCH = 13
 
 ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
 
 class KubernetesServicePatch(Object):
-    """A utility for patching the Kubernetes service set up by Juju."""
+    """A utility for patching a Kubernetes LoadBalancer service."""
 
     def __init__(
         self,
@@ -213,6 +196,14 @@ class KubernetesServicePatch(Object):
         if self.service_name == self._app and service_type == "LoadBalancer":
             self.service_name = f"{self._app}-lb"
         self.service_type = service_type
+        if service_type == "ClusterIP":
+            logger.warning(
+                "The ``kubernetes_service_patch v1`` library is DEPRECATED for ``ClusterIP`` services"
+                "(i.e  Kubernetes services created by Juju during the deployment of a charm) and "
+                "``ops.Unit.set_ports`` functionality should be used instead. "
+                "The ``kubernetes_service_patch v1`` library is now only maintained for ``LoadBalancer`` services."
+            )
+
         self.service = self._service_object(
             ports,
             self.service_name,
