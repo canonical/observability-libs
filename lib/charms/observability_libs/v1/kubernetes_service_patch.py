@@ -1,129 +1,13 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""# KubernetesServicePatch Library.
+"""# [DEPRECATED!] KubernetesServicePatch Library.
 
-[DEPRECATED!]
-The `kubernetes_service_patch` library is DEPRECATED for patching the Kubernetes service created
-by Juju during the deployment of a charm and `ops.Unit.set_ports` functionality should be used for that instead.
+The `kubernetes_service_patch` library is DEPRECATED and will be removed in October 2025.
 
-This library is intended to only be used to enable developers to create/patch Kubernetes `LoadBalancer`/`NodePort` services.
+For patching the Kubernetes service created by Juju during the deployment of a charm,
+`ops.Unit.set_ports` functionality should be used instead.
 
-When initialised, this library binds a handler to the parent charm's `install` and `upgrade_charm`
-events which applies the patch to the cluster. This should ensure that the service ports are
-correct throughout the charm's life.
-
-The constructor simply takes a reference to the parent charm, and a list of
-[`lightkube`](https://github.com/gtsystem/lightkube) ServicePorts that each define a port for the
-service. For information regarding the `lightkube` `ServicePort` model, please visit the
-`lightkube` [docs](https://gtsystem.github.io/lightkube-models/1.23/models/core_v1/#serviceport).
-
-Optionally, a name of the service (in case service name needs to be patched as well), labels,
-selectors, and annotations can be provided as keyword arguments.
-
-## Getting Started
-
-To get started using the library, you just need to fetch the library using `charmcraft`. **Note
-that you also need to add `lightkube` and `lightkube-models` to your charm's `requirements.txt`.**
-
-```shell
-cd some-charm
-charmcraft fetch-lib charms.observability_libs.v1.kubernetes_service_patch
-cat << EOF >> requirements.txt
-lightkube
-lightkube-models
-EOF
-```
-
-Then, to initialise the library:
-
-For `LoadBalancer`/`NodePort` services:
-
-```python
-# ...
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube.models.core_v1 import ServicePort
-
-class SomeCharm(CharmBase):
-  def __init__(self, *args):
-    # ...
-    port = ServicePort(443, name=f"{self.app.name}", targetPort=443, nodePort=30666)
-    self.service_patcher = KubernetesServicePatch(
-        self, [port], "LoadBalancer"
-    )
-    # ...
-```
-
-Port protocols can also be specified. Valid protocols are `"TCP"`, `"UDP"`, and `"SCTP"`
-
-```python
-# ...
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube.models.core_v1 import ServicePort
-
-class SomeCharm(CharmBase):
-  def __init__(self, *args):
-    # ...
-    tcp = ServicePort(443, name=f"{self.app.name}-tcp", protocol="TCP")
-    udp = ServicePort(443, name=f"{self.app.name}-udp", protocol="UDP")
-    sctp = ServicePort(443, name=f"{self.app.name}-sctp", protocol="SCTP")
-    self.service_patcher = KubernetesServicePatch(self, [tcp, udp, sctp], "LoadBalancer")
-    # ...
-```
-
-Bound with custom events by providing `refresh_event` argument:
-For example, you would like to have a configurable port in your charm and want to apply
-service patch every time charm config is changed.
-
-```python
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube.models.core_v1 import ServicePort
-
-class SomeCharm(CharmBase):
-  def __init__(self, *args):
-    # ...
-    port = ServicePort(int(self.config["charm-config-port"]), name=f"{self.app.name}")
-    self.service_patcher = KubernetesServicePatch(
-        self,
-        [port],
-        "LoadBalancer",
-        refresh_event=self.on.config_changed
-    )
-    # ...
-```
-
-Creating a new k8s lb service instead of patching the one created by juju
-Service name is optional. If not provided, it defaults to {app_name}-lb.
-If provided and equal to app_name, it also defaults to {app_name}-lb to prevent conflicts with the Juju default service.
-```python
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube.models.core_v1 import ServicePort
-
-class SomeCharm(CharmBase):
-  def __init__(self, *args):
-    # ...
-    port = ServicePort(int(self.config["charm-config-port"]), name=f"{self.app.name}")
-    self.service_patcher = KubernetesServicePatch(
-        self,
-        [port],
-        service_type="LoadBalancer",
-        service_name="application-lb"
-    )
-    # ...
-```
-
-Additionally, you may wish to use mocks in your charm's unit testing to ensure that the library
-does not try to make any API calls, or open any files during testing that are unlikely to be
-present, and could break your tests. The easiest way to do this is during your test `setUp`:
-
-```python
-# ...
-
-@patch("charm.KubernetesServicePatch", lambda x, y: None)
-def setUp(self, *unused):
-    self.harness = Harness(SomeCharm)
-    # ...
-```
 """
 
 import logging
@@ -156,7 +40,7 @@ ServiceType = Literal["ClusterIP", "LoadBalancer"]
 
 
 class KubernetesServicePatch(Object):
-    """A utility for patching a Kubernetes /NodePort service."""
+    """A utility for patching the Kubernetes service set up by Juju."""
 
     def __init__(
         self,
@@ -188,6 +72,11 @@ class KubernetesServicePatch(Object):
                 will be observed to re-apply the patch (e.g. on port change).
                 The `install` and `upgrade-charm` events would be observed regardless.
         """
+        logger.warning(
+            "The ``kubernetes_service_patch v1`` library is DEPRECATED and will be removed "
+            "in October 2025. For patching the Kubernetes service created by Juju during "
+            "the deployment of a charm, ``ops.Unit.set_ports`` functionality should be used instead."
+        )
         super().__init__(charm, "kubernetes-service-patch")
         self.charm = charm
         self.service_name = service_name or self._app
@@ -196,14 +85,6 @@ class KubernetesServicePatch(Object):
         if self.service_name == self._app and service_type == "LoadBalancer":
             self.service_name = f"{self._app}-lb"
         self.service_type = service_type
-        if service_type == "ClusterIP":
-            logger.warning(
-                "The ``kubernetes_service_patch v1`` library is DEPRECATED for patching "
-                "the Kubernetes service created by Juju during the deployment of a charm and "
-                "``ops.Unit.set_ports`` functionality should be used for that instead. "
-                "The ``kubernetes_service_patch v1`` library is now only maintained for ``LoadBalancer``/``NodePort`` services."
-            )
-
         self.service = self._service_object(
             ports,
             self.service_name,
