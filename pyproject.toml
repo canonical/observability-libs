@@ -1,3 +1,34 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+[project]
+name = "observability-libs"
+version = "0.0"
+requires-python = "~=3.8"
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  # Linting
+  "ruff",
+  "codespell",
+  # Static
+  "pyright",
+  # Unit
+  "pytest",
+  "coverage[toml]",
+  "ops[testing]",
+  "cryptography",
+  "jsonschema",
+  "tenacity",
+  # Integration
+  "juju<=3.3.0,>=3.0",
+  "websockets<14",
+  "lightkube",
+  "lightkube-models",
+  "pytest-operator",
+]
+
 # Testing tools configuration
 [tool.coverage.run]
 branch = true
@@ -28,7 +59,7 @@ convention = "google"
 
 # Static analysis tools configuration
 [tool.pyright]
-extraPaths = ["lib"]
+extraPaths = ["src", "lib"]
 pythonVersion = "3.8"
 pythonPlatform = "All"
 
