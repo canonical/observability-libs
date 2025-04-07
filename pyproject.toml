@@ -5,7 +5,12 @@ name = "observability-libs"
 version = "0.0"
 requires-python = "~=3.8"
 
-dependencies = []
+dependencies = [
+  "ops",
+  "PyYAML",
+  "lightkube>=v0.15.4",
+  "tenacity",
+]
 
 [project.optional-dependencies]
 dev = [

@@ -1,7 +1,0 @@
-# Copyright 2021 Canonical Ltd.
-# See LICENSE file for licensing details.
-
-ops
-PyYAML
-lightkube>=v0.15.4
-tenacity

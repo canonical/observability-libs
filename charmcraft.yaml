@@ -38,3 +38,16 @@ resources:
     type: oci-image
     description: OCI image for placeholder
     upstream-source: busybox
+
+config:
+  options:
+    cpu:
+      description: |
+        K8s cpu resource limit, e.g. "1" or "500m". Default is unset (no limit).
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
+    memory:
+      description: |
+        K8s memory resource limit, e.g. "1Gi". Default is unset (no limit).
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
