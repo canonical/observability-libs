@@ -77,7 +77,7 @@ async def tester_charm(ops_test: OpsTest) -> Path:
     # Link to lib
     dest_charmlib = Path(f"{TESTINGCHARM_PATH}/{CERTHANDLER_PATH}")
     dest_charmlib.parent.mkdir(parents=True)
-    dest_charmlib.hardlink_to(CERTHANDLER_PATH)
+    dest_charmlib.hardlink_to(CERTHANDLER_PATH)  # type: ignore
 
     # fetch tls_certificates lib
     fetch_tls_cmd = [

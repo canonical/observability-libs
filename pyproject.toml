@@ -67,6 +67,7 @@ convention = "google"
 extraPaths = ["src", "lib"]
 pythonVersion = "3.8"
 pythonPlatform = "All"
+exclude = ["tests/integration/tester-charm/*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

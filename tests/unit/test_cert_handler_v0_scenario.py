@@ -38,15 +38,15 @@ def certificates():
     return Relation("certificates")
 
 
-def test_cert_joins(ctx, peer, certificates):
+def test_cert_joins(ctx: Context, peer, certificates):
     # both peer and certificates are there, we're processing certificates-joined
-    with ctx.manager(certificates.joined_event, State(relations=[peer, certificates])) as runner:
-        runner.run()
-        assert runner.charm.ch._private_key
+    with ctx(ctx.on.relation_joined(certificates), State(relations=[peer, certificates])) as mgr:
+        mgr.run()
+        assert mgr.charm.ch._private_key
 
 
-def test_peer_created(ctx, peer, certificates):
+def test_peer_created(ctx: Context, peer, certificates):
     # both peer and certificates are there, we're processing peer-created
-    with ctx.manager(peer.created_event, State(relations=[peer, certificates])) as runner:
-        runner.run()
-        assert runner.charm.ch._private_key
+    with ctx(ctx.on.relation_created(peer), State(relations=[peer, certificates])) as mgr:
+        mgr.run()
+        assert mgr.charm.ch._private_key

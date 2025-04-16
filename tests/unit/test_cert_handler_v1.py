@@ -12,7 +12,7 @@ from ops.testing import Harness
 
 
 class StandInCharm(CharmBase):
-    meta = dedent(
+    metadata: str = dedent(
         """
             name: test-charm
             peers:
@@ -41,9 +41,8 @@ class StandInCharm(CharmBase):
 
 
 class TestCertHandlerV1(unittest.TestCase):
-
     def setUp(self) -> None:
-        self.harness = Harness(StandInCharm, meta=StandInCharm.meta)
+        self.harness = Harness(StandInCharm, meta=StandInCharm.metadata)
         self.harness.begin_with_initial_hooks()
 
     def test_tls_is_inactive(self):
@@ -63,6 +62,7 @@ class TestCertHandlerV1(unittest.TestCase):
         self.harness.add_relation_unit(self.relation_id, "ca/0")
 
         # THEN the CSR is ready, tls is "enabled" but not "available"
+        assert charm.cert_handler._csr
         self.assertIn("-----BEGIN CERTIFICATE REQUEST-----", charm.cert_handler._csr)
         self.assertEqual(charm.cert_handler.enabled, True)
         self.assertEqual(charm.cert_handler.available, False)

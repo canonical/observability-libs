@@ -409,6 +409,7 @@ class TestK8sServicePatch(unittest.TestCase):
 
         client_patch.side_effect = _FakeApiError(403)
         with self.assertLogs(MOD_PATH) as logs:
+            assert logs
             self.harness.charm.service_patch._patch(None)
             msg = "Kubernetes service patch failed: `juju trust` this application."
             self.assertTrue(msg in ";".join(logs.output))
@@ -417,6 +418,7 @@ class TestK8sServicePatch(unittest.TestCase):
         client_patch.side_effect = _FakeApiError(500)
 
         with self.assertLogs(MOD_PATH) as logs:
+            assert logs
             self.harness.charm.service_patch._patch(None)
             self.assertTrue("Kubernetes service patch failed: broken" in ";".join(logs.output))
 
@@ -489,6 +491,7 @@ class TestK8sServicePatch(unittest.TestCase):
         client.return_value = client
         client.get.side_effect = _FakeApiError(404)
         with self.assertLogs(MOD_PATH) as logs:
+            assert logs
             with self.assertRaises(_FakeApiError):
                 self.harness.charm.service_patch.is_patched()
             self.assertTrue("Kubernetes service get failed: broken" in ";".join(logs.output))
@@ -503,6 +506,7 @@ class TestK8sServicePatch(unittest.TestCase):
         client.return_value = client
         client.get.side_effect = _FakeApiError(500)
         with self.assertLogs(MOD_PATH) as logs:
+            assert logs
             with self.assertRaises(_FakeApiError):
                 charm.custom_service_name_service_patch.is_patched()
             self.assertTrue("Kubernetes service get failed: broken" in ";".join(logs.output))
