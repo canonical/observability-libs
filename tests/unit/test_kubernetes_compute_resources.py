@@ -54,10 +54,10 @@ class TestKubernetesComputeResourcesPatch(unittest.TestCase):
             self.patch_failed_counter += 1
 
     def setUp(self) -> None:
-        with open(PROJECT_DIR / "config.yaml") as config_file:
-            config = yaml.safe_load(config_file)
+        with open(PROJECT_DIR / "charmcraft.yaml") as config_file:
+            config = yaml.safe_load(config_file)["config"]
         self.harness = Harness(
-            self._TestCharm, meta=open(PROJECT_DIR / "metadata.yaml"), config=str(config)
+            self._TestCharm, meta=open(PROJECT_DIR / "charmcraft.yaml"), config=str(config)
         )
 
     @mock.patch("lightkube.core.client.GenericSyncClient", Mock)

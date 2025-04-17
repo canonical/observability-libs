@@ -4,6 +4,7 @@
 
 import functools
 import logging
+import os
 import shutil
 from collections import defaultdict
 from datetime import datetime
@@ -59,6 +60,9 @@ def timed_memoizer(func):
 @timed_memoizer
 async def o11y_libs_charm(ops_test):
     """The charm used for integration testing."""
+    if charm_file := os.environ.get("CHARM_PATH"):
+        return Path(charm_file)
+
     charm = await ops_test.build_charm(".")
     return charm
 
@@ -73,7 +77,7 @@ async def tester_charm(ops_test: OpsTest) -> Path:
     # Link to lib
     dest_charmlib = Path(f"{TESTINGCHARM_PATH}/{CERTHANDLER_PATH}")
     dest_charmlib.parent.mkdir(parents=True)
-    dest_charmlib.hardlink_to(CERTHANDLER_PATH)
+    dest_charmlib.hardlink_to(CERTHANDLER_PATH)  # type: ignore
 
     # fetch tls_certificates lib
     fetch_tls_cmd = [

@@ -154,9 +154,10 @@ def _cert_generate_patch():
 
 
 @pytest.mark.parametrize("leader", (True, False))
-def test_cert_joins(ctx, certificates, leader):
-    with ctx.manager(
-        certificates.joined_event, State(leader=leader, relations=[certificates], secrets=[])
+def test_cert_joins(ctx: Context, certificates, leader):
+    with ctx(
+        ctx.on.relation_joined(certificates),
+        State(leader=leader, relations=[certificates], secrets=[]),
     ) as mgr:
         mgr.run()
         assert mgr.charm.ch.private_key
@@ -182,9 +183,9 @@ def ctx_juju2():
 
 
 @pytest.mark.parametrize("leader", (True, False))
-def test_cert_joins_peer_vault_backend(ctx_juju2, certificates, leader):
-    with ctx_juju2.manager(
-        certificates.joined_event,
+def test_cert_joins_peer_vault_backend(ctx_juju2: Context, certificates, leader):
+    with ctx_juju2(
+        ctx_juju2.on.relation_joined(certificates),
         State(leader=leader, relations=[certificates, PeerRelation("myfunkypeers")], secrets=[]),
     ) as mgr:
         mgr.run()
@@ -197,15 +198,20 @@ def test_cert_joins_peer_vault_backend(ctx_juju2, certificates, leader):
     (("update_status", 0), ("start", 0), ("install", 0), ("config_changed", 1)),
 )
 def test_no_renew_if_no_initial_csr_was_generated(
-    event, expected_generate_calls, ctx, certificates
+    event, expected_generate_calls, ctx: Context, certificates
 ):
+    event_objects = {
+        "update_status": ctx.on.update_status(),
+        "start": ctx.on.start(),
+        "install": ctx.on.install(),
+        "config_changed": ctx.on.config_changed(),
+    }
     with _cert_renew_patch() as renew_patch:
         with _cert_generate_patch() as generate_patch:
-            with ctx.manager(
-                event,
+            with ctx(
+                event_objects[event],
                 State(leader=True, relations=[certificates]),
             ) as mgr:
-
                 mgr.run()
                 assert renew_patch.call_count == 0
                 assert generate_patch.call_count == expected_generate_calls
@@ -220,9 +226,14 @@ def test_no_renew_if_no_initial_csr_was_generated(
         (False, "config_changed"),
     ),
 )
-def test_csr_renew_on_any_event(is_relation, event, ctx, certificates):
-    with ctx.manager(
-        getattr(certificates, event) if is_relation else event,
+def test_csr_renew_on_any_event(is_relation, event, ctx: Context, certificates):
+    event_objects = {
+        "start": ctx.on.start(),
+        "changed_event": ctx.on.relation_changed(certificates),
+        "config_changed": ctx.on.config_changed(),
+    }
+    with ctx(
+        event_objects[event],
         State(
             leader=True,
             relations=[certificates],
@@ -234,17 +245,16 @@ def test_csr_renew_on_any_event(is_relation, event, ctx, certificates):
         assert get_sans_from_csr(orig_csr) == {socket.getfqdn()}
 
     with _sans_patch():
-        with ctx.manager("update_status", state_out) as mgr:
+        with ctx(ctx.on.update_status(), state_out) as mgr:
             charm = mgr.charm
             state_out = mgr.run()
             csr = get_csr_obj(charm.ch._csr)
             assert get_sans_from_csr(csr) == {socket.getfqdn(), MOCK_HOSTNAME}
 
 
-def test_csr_no_change(ctx, certificates):
-
-    with ctx.manager(
-        "config_changed",
+def test_csr_no_change(ctx: Context, certificates):
+    with ctx(
+        ctx.on.config_changed(),
         State(leader=True, relations=[certificates]),
     ) as mgr:
         charm = mgr.charm
@@ -253,7 +263,7 @@ def test_csr_no_change(ctx, certificates):
         assert get_sans_from_csr(orig_csr) == {socket.getfqdn()}
 
     with _cert_renew_patch() as renew_patch:
-        with ctx.manager("config_changed", state_out) as mgr:
+        with ctx(ctx.on.config_changed(), state_out) as mgr:
             charm = mgr.charm
             state_out = mgr.run()
             csr = get_csr_obj(charm.ch._csr)
@@ -261,10 +271,18 @@ def test_csr_no_change(ctx, certificates):
             assert renew_patch.call_count == 0
 
 
-def test_chain_contains_server_cert(ctx, certificates):
+def test_chain_contains_server_cert(ctx: Context, certificates: Relation):
     ca_cert_pem, server_cert_pem, _ = generate_certificate_and_key()
 
-    certificates = certificates.replace(
+    updated_certificates: Relation = Relation(
+        endpoint=certificates.endpoint,
+        interface=certificates.interface,
+        id=certificates.id,
+        local_app_data=certificates.local_app_data,
+        local_unit_data={
+            "certificate_signing_requests": json.dumps([{"certificate_signing_request": "csr"}])
+        },
+        remote_app_name=certificates.remote_app_name,
         remote_app_data={
             "certificates": json.dumps(
                 [
@@ -277,12 +295,11 @@ def test_chain_contains_server_cert(ctx, certificates):
                 ],
             )
         },
-        local_unit_data={
-            "certificate_signing_requests": json.dumps([{"certificate_signing_request": "csr"}])
-        },
+        remote_units_data=certificates.remote_units_data,
+        remote_model_uuid=certificates.remote_model_uuid,
     )
 
-    with ctx.manager("update_status", State(leader=True, relations=[certificates])) as mgr:
+    with ctx(ctx.on.update_status(), State(leader=True, relations=[updated_certificates])) as mgr:
         mgr.run()
         assert server_cert_pem in mgr.charm.ch.chain
         assert x509.load_pem_x509_certificate(mgr.charm.ch.chain.encode(), default_backend())

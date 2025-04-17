@@ -1,17 +1,52 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+name: observability-libs
 type: charm
-bases:
-  - build-on:
-      - name: "ubuntu"
-        channel: "20.04"
-    run-on:
-      - name: "ubuntu"
-        channel: "20.04"
+summary: Collection of Charm Libraries for the Observability charms.
+description: |
+  A placeholder charm that contains helpful charm libraries curated by the
+  Canonical Observability charm team.
+
+links:
+  website: https://charmhub.io/observability-libs
+  source: https://github.com/canonical/observability-libs
+  issues: https://github.com/canonical/observability-libs/issues
+
+assumes:
+  - k8s-api
+
+platforms:
+  ubuntu@20.04:amd64:
+
 parts:
   charm:
-    charm-binary-python-packages:
-      - httpx  # https://github.com/pypa/setuptools_scm/issues/918
-    build-packages:
-      - git
+    source: .
+    plugin: uv
+    build-packages: [git]
+    build-snaps: [astral-uv]
+    override-build: |
+      craftctl default
+      git describe --always > $CRAFT_PART_INSTALL/version
+
+containers:
+  placeholder:
+    resource: placeholder-image
+
+resources:
+  placeholder-image:
+    type: oci-image
+    description: OCI image for placeholder
+    upstream-source: busybox
+
+config:
+  options:
+    cpu:
+      description: |
+        K8s cpu resource limit, e.g. "1" or "500m". Default is unset (no limit).
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string
+    memory:
+      description: |
+        K8s memory resource limit, e.g. "1Gi". Default is unset (no limit).
+        See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      type: string

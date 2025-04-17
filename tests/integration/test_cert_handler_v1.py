@@ -27,6 +27,8 @@ async def test_cert_handler_v1(
     tester_charm: Path,
 ):
     """Validate the integration between TesterCharm and self-signed-certificates using CertHandler v1."""
+    assert ops_test.model
+    assert ops_test.model_full_name
     ca_app_name = "ca"
     apps = [APP_NAME, ca_app_name]
 
@@ -37,7 +39,7 @@ async def test_cert_handler_v1(
         ops_test.model.deploy(
             "self-signed-certificates",
             application_name=ca_app_name,
-            channel="beta",
+            channel="latest/beta",
             trust=True,
         ),
         ops_test.model.deploy(
@@ -74,13 +76,16 @@ async def test_cert_handler_v1(
 
 @pytest.mark.abort_on_fail
 async def test_secrets_does_not_change_after_refresh(ops_test: OpsTest, tester_charm: Path):
+    assert ops_test.model
     paths = [KEY_PATH, CERT_PATH, CA_CERT_PATH]
     secrets = {paths[0]: "", paths[1]: "", paths[2]: ""}
 
     for path in paths:
         secrets[path] = get_secret(ops_test, APP_NAME, path)
 
-    await ops_test.model.applications[APP_NAME].refresh(path=tester_charm)
+    application = ops_test.model.applications[APP_NAME]
+    assert application
+    await application.refresh(path=tester_charm)
     await ops_test.model.wait_for_idle(
         status="active", raise_on_error=False, timeout=600, idle_period=30
     )
@@ -91,12 +96,14 @@ async def test_secrets_does_not_change_after_refresh(ops_test: OpsTest, tester_c
 
 @pytest.mark.abort_on_fail
 async def test_change_ssc_and_tester_still_have_certs(ops_test: OpsTest):
+    assert ops_test.model
+    assert ops_test.model_full_name
     await ops_test.model.remove_application("ca", block_until_done=True)
     await asyncio.gather(
         ops_test.model.deploy(
             "self-signed-certificates",
             application_name="ca2",
-            channel="beta",
+            channel="latest/beta",
             trust=True,
         ),
     )
