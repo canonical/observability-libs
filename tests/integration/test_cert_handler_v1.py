@@ -39,7 +39,7 @@ async def test_cert_handler_v1(
         ops_test.model.deploy(
             "self-signed-certificates",
             application_name=ca_app_name,
-            channel="beta",
+            channel="latest/beta",
             trust=True,
         ),
         ops_test.model.deploy(
@@ -103,7 +103,7 @@ async def test_change_ssc_and_tester_still_have_certs(ops_test: OpsTest):
         ops_test.model.deploy(
             "self-signed-certificates",
             application_name="ca2",
-            channel="beta",
+            channel="latest/beta",
             trust=True,
         ),
     )
