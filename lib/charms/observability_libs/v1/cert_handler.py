@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 
 LIBID = "b5cd5cd580f3428fa5f59a8876dcbe6a"
 LIBAPI = 1
-LIBPATCH = 15
+LIBPATCH = 16
 
 VAULT_SECRET_LABEL = "cert-handler-private-vault"
 
