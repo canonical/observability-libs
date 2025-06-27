@@ -609,7 +609,7 @@ class CertHandler(Object):
         cert = self.get_cert()
         if not cert:
             return None
-        chain = cert.chain_as_pem()
+        chain = cert.chain_as_pem_string()
         if cert.certificate not in chain:
             # add server cert to chain
             chain = cert.certificate + "\n\n" + chain
