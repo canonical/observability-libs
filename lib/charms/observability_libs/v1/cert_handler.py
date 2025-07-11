@@ -649,7 +649,7 @@ class CertHandler(Object):
         # See https://github.com/canonical/traefik-k8s-operator/issues/491.
         # This should be removed when revision 308 of self-signed-certificates is sufficiently old.
         certs = split_chain(chain)
-        if cert.certificate != certs[0]:
+        if cert.certificate.strip() != certs[0].strip():
             certs.reverse()
             chain = "\n\n".join(certs)
 
