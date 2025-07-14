@@ -17,6 +17,7 @@ from scenario import Context, PeerRelation, Relation, State
 
 from lib.charms.observability_libs.v1.cert_handler import (
     CertHandler,
+    split_chain,
 )
 
 libs = str(Path(__file__).parent.parent.parent.parent / "lib")
@@ -303,3 +304,39 @@ def test_chain_contains_server_cert(ctx: Context, certificates: Relation):
         mgr.run()
         assert server_cert_pem in mgr.charm.ch.chain
         assert x509.load_pem_x509_certificate(mgr.charm.ch.chain.encode(), default_backend())
+
+
+@pytest.mark.parametrize("reverse", [True, False])
+def test_chain_order(ctx: Context, certificates: Relation, reverse: bool):
+    ca_cert_pem, server_cert_pem, _ = generate_certificate_and_key()
+
+    chain = [ca_cert_pem, server_cert_pem] if reverse else [server_cert_pem, ca_cert_pem]
+    updated_certificates: Relation = Relation(
+        endpoint=certificates.endpoint,
+        interface=certificates.interface,
+        id=certificates.id,
+        local_app_data=certificates.local_app_data,
+        local_unit_data={
+            "certificate_signing_requests": json.dumps([{"certificate_signing_request": "csr"}])
+        },
+        remote_app_name=certificates.remote_app_name,
+        remote_app_data={
+            "certificates": json.dumps(
+                [
+                    {
+                        "certificate": server_cert_pem,
+                        "ca": ca_cert_pem,
+                        "chain": chain,
+                        "certificate_signing_request": "csr",
+                    }
+                ],
+            )
+        },
+        remote_units_data=certificates.remote_units_data,
+        remote_model_uuid=certificates.remote_model_uuid,
+    )
+
+    with ctx(ctx.on.update_status(), State(leader=True, relations=[updated_certificates])) as mgr:
+        mgr.run()
+        chain_list = split_chain(mgr.charm.ch.chain)
+        assert server_cert_pem.strip() == chain_list[0].strip()
