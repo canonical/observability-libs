@@ -77,7 +77,7 @@ from uuid import UUID
 LIBID = "bced1658f20f49d28b88f61f83c2d232"
 
 LIBAPI = 0
-LIBPATCH = 6
+LIBPATCH = 7
 
 
 class InvalidUUIDError(Exception):
