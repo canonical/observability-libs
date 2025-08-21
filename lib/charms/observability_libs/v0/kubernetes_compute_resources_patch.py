@@ -667,7 +667,9 @@ class KubernetesComputeResourcesPatch(Object):
         except ApiError as e:
             if e.status.code == 403:
                 msg = f"Kubernetes resources patch failed: `juju trust` this application. {e}"
-
+            elif e.status.code == 409:
+                msg = (f"Kubernetes resources patch failed: someone else (likely juju) "
+                       f"owns the resources you're trying to patch {e}")
             else:
                 msg = f"Kubernetes resources patch failed: {e}"
 
