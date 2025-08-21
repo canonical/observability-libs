@@ -37,5 +37,5 @@ charm following best practice guidelines, and `CONTRIBUTING.md` for developer gu
 [KubernetesServicePatch]: https://charmhub.io/observability-libs/libraries/kubernetes_service_patch
 [KubernetesComputeResourcesPatch]: https://charmhub.io/observability-libs/libraries/kubernetes_compute_resources_patch
 [bundle]: https://charmhub.io/cos-lite
-[charm libraries]: https://juju.is/docs/sdk/libraries
+[charm libraries]: https://documentation.ubuntu.com/charmlibs/explanation/charm-libs/
 [JujuTopology]: https://charmhub.io/observability-libs/libraries/juju_topology
