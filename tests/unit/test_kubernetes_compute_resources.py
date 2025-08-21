@@ -158,7 +158,21 @@ class TestResourceSpecDictValidation(unittest.TestCase):
         self.assertFalse(is_valid_spec({"invalid-key": "1"}))
 
 
-def test_patch_charm_container_fails_with_warning():
+@mock.patch(
+    "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply",
+    MagicMock(return_value=None),
+)
+@mock.patch(
+    "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_failed",
+    MagicMock(return_value=(False, "")),
+)
+@mock.patch("lightkube.core.client.GenericSyncClient")
+@mock.patch.object(
+                KubernetesComputeResourcesPatch,
+                "_namespace",
+                "test-namespace",
+            )
+def test_patch_charm_container_fails_with_warning(_):
     # When we try to patch the charm container we get an error
     mm = MagicMock()
     with pytest.raises(ValueError):
