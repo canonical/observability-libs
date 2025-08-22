@@ -616,7 +616,7 @@ class KubernetesComputeResourcesPatch(Object):
     def _on_config_changed(self, _):
         self._patch()
 
-    def _patch(self) -> None:
+    def _patch(self) -> None: # noqa: C901
         """Patch the Kubernetes resources created by Juju to limit cpu or mem.
 
         This method will keep on retrying to patch the kubernetes resource for a default duration of 20 seconds
