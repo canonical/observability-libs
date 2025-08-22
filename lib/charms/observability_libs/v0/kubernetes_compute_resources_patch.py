@@ -569,7 +569,6 @@ class KubernetesComputeResourcesPatch(Object):
         *,
         resource_reqs_func: Callable[[], ResourceRequirements],
         refresh_event: Optional[Union[BoundEvent, List[BoundEvent]]] = None,
-        allow_patching_charm_container: bool = False
     ):
         """Constructor for KubernetesComputeResourcesPatch.
 
@@ -583,15 +582,14 @@ class KubernetesComputeResourcesPatch(Object):
               only raise ValueError.
             refresh_event: an optional bound event or list of bound events which
                 will be observed to re-apply the patch.
-            allow_patching_charm_container: Whether to allow patching the "charm" container.
         """
         super().__init__(charm, "{}_{}".format(self.__class__.__name__, container_name))
 
-        if container_name == "charm" and not allow_patching_charm_container:
+        if container_name == "charm":
             raise ValueError(
                 "Starting with juju 3.6.9, juju manages the charm container "
-                "constraints and you'll likely get errors by doing this if the charm is deployed "
-                "on higher juju versions. To suppress this warning pass `allow_patching_charm_container=True`."
+                "constraints and you'll get errors by doing this if the charm is deployed "
+                "on higher juju versions."
             )
 
         self._charm = charm

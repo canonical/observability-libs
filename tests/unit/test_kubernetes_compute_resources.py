@@ -181,12 +181,3 @@ def test_patch_charm_container_fails_with_warning(_):
             "charm",
             resource_reqs_func=lambda: adjust_resource_requirements(None, None),
         )
-
-    # Unless we pass an explicit override
-    KubernetesComputeResourcesPatch(
-            mm,
-            "charm",
-            resource_reqs_func=lambda: adjust_resource_requirements(None, None),
-            allow_patching_charm_container=True
-        )
-
