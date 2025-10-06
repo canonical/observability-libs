@@ -5,6 +5,7 @@ from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
+import pytest
 import tenacity
 import yaml
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
@@ -155,3 +156,28 @@ class TestResourceSpecDictValidation(unittest.TestCase):
 
         self.assertFalse(is_valid_spec({"bad": "combo"}))
         self.assertFalse(is_valid_spec({"invalid-key": "1"}))
+
+
+@mock.patch(
+    "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.apply",
+    MagicMock(return_value=None),
+)
+@mock.patch(
+    "charms.observability_libs.v0.kubernetes_compute_resources_patch.ResourcePatcher.is_failed",
+    MagicMock(return_value=(False, "")),
+)
+@mock.patch("lightkube.core.client.GenericSyncClient")
+@mock.patch.object(
+                KubernetesComputeResourcesPatch,
+                "_namespace",
+                "test-namespace",
+            )
+def test_patch_charm_container_fails_with_warning(_):
+    # When we try to patch the charm container we get an error
+    mm = MagicMock()
+    with pytest.raises(ValueError):
+        KubernetesComputeResourcesPatch(
+            mm,
+            "charm",
+            resource_reqs_func=lambda: adjust_resource_requirements(None, None),
+        )
