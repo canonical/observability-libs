@@ -193,6 +193,33 @@ class TestHasMetric:
         mimir.session.get.return_value = _mock_response({"data": {}})
         assert mimir.has_metric("up") is False
 
+    def test_labels_only(self, mimir: Mimir):
+        mimir.session.get.return_value = _mock_response(
+            {"data": {"result": [{"metric": {"job": "node"}, "value": [0, "1"]}]}}
+        )
+        assert mimir.has_metric(labels={"job": "node"}) is True
+        _, kwargs = mimir.session.get.call_args
+        assert kwargs["params"]["query"] == '{job="node"}'
+
+    def test_labels_only_not_found(self, mimir: Mimir):
+        mimir.session.get.return_value = _mock_response({"data": {"result": []}})
+        assert mimir.has_metric(labels={"job": "nonexistent"}) is False
+
+    def test_labels_only_multiple(self, mimir: Mimir):
+        mimir.session.get.return_value = _mock_response(
+            {"data": {"result": [{"value": [0, "1"]}]}}
+        )
+        mimir.has_metric(labels={"job": "node", "instance": "host1"})
+        _, kwargs = mimir.session.get.call_args
+        query = kwargs["params"]["query"]
+        assert query.startswith("{")
+        assert 'job="node"' in query
+        assert 'instance="host1"' in query
+
+    def test_no_args_raises(self, mimir: Mimir):
+        with pytest.raises(ValueError, match="At least one"):
+            mimir.has_metric()
+
 
 # ---------------------------------------------------------------------------
 # Check methods – has_alert_rule

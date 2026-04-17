@@ -203,6 +203,33 @@ class TestHasMetric:
         _, kwargs = prom.session.get.call_args
         assert kwargs["params"]["query"] == "up"
 
+    def test_metric_labels_only(self, prom):
+        prom.session.get.return_value = _mock_response(
+            {"data": {"result": [{"metric": {"job": "node"}, "value": [0, "1"]}]}}
+        )
+        assert prom.has_metric(labels={"job": "node"}) is True
+
+        _, kwargs = prom.session.get.call_args
+        assert kwargs["params"]["query"] == '{job="node"}'
+
+    def test_metric_labels_only_not_found(self, prom):
+        prom.session.get.return_value = _mock_response({"data": {"result": []}})
+        assert prom.has_metric(labels={"job": "nonexistent"}) is False
+
+    def test_metric_labels_only_multiple(self, prom):
+        prom.session.get.return_value = _mock_response({"data": {"result": [{"value": [0, "1"]}]}})
+        prom.has_metric(labels={"job": "node", "instance": "host1"})
+
+        _, kwargs = prom.session.get.call_args
+        query = kwargs["params"]["query"]
+        assert query.startswith("{")
+        assert 'job="node"' in query
+        assert 'instance="host1"' in query
+
+    def test_metric_no_args_raises(self, prom):
+        with pytest.raises(ValueError, match="At least one"):
+            prom.has_metric()
+
 
 # ── has_alert_rule ───────────────────────────────────────────────────────────
 

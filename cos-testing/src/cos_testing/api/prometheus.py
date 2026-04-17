@@ -72,13 +72,18 @@ class Prometheus:
 
     # --- Check methods (public, return bool) ---
 
-    def has_metric(self, name: str, labels: dict[str, str] | None = None) -> bool:
-        """Check whether a metric with the given name (and optional labels) has data."""
+    def has_metric(self, name: str | None = None, labels: dict[str, str] | None = None) -> bool:
+        """Check whether a metric with the given name and/or labels has data.
+
+        At least one of ``name`` or ``labels`` must be provided.
+        """
+        if not name and not labels:
+            raise ValueError("At least one of 'name' or 'labels' must be provided.")
         label_selector = ""
         if labels:
             pairs = ", ".join(f'{k}="{v}"' for k, v in labels.items())
             label_selector = f"{{{pairs}}}"
-        result = self.query(f"{name}{label_selector}")
+        result = self.query(f"{name or ''}{label_selector}")
         return len(result.get("data", {}).get("result", [])) > 0
 
     def has_alert_rule(self, name: str, group: str | None = None) -> bool:

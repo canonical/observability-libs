@@ -12,6 +12,8 @@ A Python library for easy interactions with the [COS](https://charmhub.io/topics
 | `cos_testing.api.mimir` | `Mimir` | Query metrics and check alerts via Mimir's Prometheus-compatible API |
 | `cos_testing.api.loki` | `Loki` | Query logs, check labels, label values, and alert rules |
 | `cos_testing.api.grafana` | `Grafana` | Check dashboards, datasources, and alert rules |
+| `cos_testing.api.tempo` | `Tempo` | Search traces, check tags, and tag values |
+| `cos_testing.api.pyroscope` | `Pyroscope` | Query profiles, check profile types, labels, and label values |
 
 Each class exposes:
 - **HTTP methods** that return parsed API responses (e.g., `query()`, `get_rules()`)
@@ -28,7 +30,7 @@ pip install cos-testing
 ## Quick Start
 
 ```python
-from cos_testing import Prometheus, Loki, Grafana
+from cos_testing import Prometheus, Loki, Grafana, Tempo
 
 # Check that Prometheus has a specific metric
 prom = Prometheus(url="http://localhost:9090")
@@ -41,6 +43,10 @@ assert loki.has_log_line('{job="my-app"}', pattern="started successfully")
 # Check that Grafana has a specific dashboard
 grafana = Grafana(url="http://localhost:3000", headers={"Authorization": "Bearer <token>"})
 assert grafana.has_dashboard(title="My Dashboard")
+
+# Check that Tempo has traces for a service
+tempo = Tempo(url="http://localhost:3200")
+assert tempo.has_traces('{ resource.service.name = "my-app" }')
 ```
 
 ## Usage
@@ -111,6 +117,47 @@ grafana.has_dashboard(uid="abc123")
 grafana.has_datasource(name="Prometheus")
 grafana.has_datasource(type="loki")
 grafana.has_alert_rule("HighCPU", group="infra-alerts")
+```
+
+### Tempo
+
+```python
+from cos_testing import Tempo
+
+tempo = Tempo(url="http://localhost:3200")
+
+# HTTP methods
+traces = tempo.search('{ resource.service.name = "frontend" }')
+trace = tempo.get_trace("abc123def456")
+tags = tempo.get_tags()
+values = tempo.get_tag_values("http.method")
+
+# Check methods
+tempo.has_trace("abc123def456")
+tempo.has_traces('{ resource.service.name = "frontend" }')
+tempo.has_tag("service.name")
+tempo.has_tag("service.name", scope="resource")
+tempo.has_tag_value("http.method", "GET")
+```
+
+### Pyroscope
+
+```python
+from cos_testing import Pyroscope
+
+pyroscope = Pyroscope(url="http://localhost:4040")
+
+# HTTP methods
+flamegraph = pyroscope.render("process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name=\"myapp\"}")
+profile_types = pyroscope.get_profile_types()
+labels = pyroscope.get_labels()
+values = pyroscope.get_label_values("service_name")
+
+# Check methods
+pyroscope.has_profile("process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name=\"myapp\"}")
+pyroscope.has_profile_type("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
+pyroscope.has_label("service_name")
+pyroscope.has_label_value("service_name", "myapp")
 ```
 
 ## Development
