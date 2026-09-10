@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine package from tag
+        id: pkg
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          package="${tag%%/v*}"
+          if [[ -z "${package}" || "${package}" == "${tag}" ]]; then
+            echo "Error: tag '${tag}' does not match expected '<package>/v<version>' format"
+            exit 1
+          fi
+          if [[ ! -f "${package}/justfile" ]]; then
+            echo "Error: no justfile found for package '${package}'"
+            exit 1
+          fi
+          echo "package=${package}" >> "$GITHUB_OUTPUT"
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: extractions/setup-just@v2
+
+      - name: Build
+        working-directory: ${{ steps.pkg.outputs.package }}
+        run: just build
+
+      - name: Publish to PyPI
+        working-directory: ${{ steps.pkg.outputs.package }}
+        run: uv publish
