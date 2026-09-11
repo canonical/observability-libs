@@ -1,0 +1,65 @@
+[project]
+name = "observability-clients"
+version = "0.1.0"
+description = "A Python library of HTTP API clients for common Observability stack workloads."
+authors = [
+    {name = "Luca Bello", email = "luca.bello@canonical.com"},
+]
+readme = "README.md"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.32.0",
+    "tenacity>=9.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.14",
+    "ty>=0.0.1a25",
+    "codespell>=2.4.1",
+    "vulture>=2.14",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "pytest-sugar>=1.1.1",
+    "actionlint-py>=1.7.10.24",
+    "uv-secure>=0.15.4",
+    "types-requests>=2.32.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/canonical/observability-libs/observability-clients"
+Repository = "https://github.com/canonical/observability-libs/observability-clients"
+Issues = "https://github.com/canonical/observability-libs/issues"
+Changelog = "https://github.com/canonical/observability-libs/releases"
+
+
+# Building and publishing
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/observability_clients"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+# Tools configuration
+[tool.ruff]
+line-length = 99
+
+[tool.lint.pydocstyle]
+convention = "google"
+
+[tool.codespell]
+skip = ".git,build,venv*"
+ignore-words-list = "assertIn"
+
+[tool.vulture]
+min_confidence = 80
+
+
