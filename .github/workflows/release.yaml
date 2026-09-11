@@ -10,6 +10,7 @@ concurrency:
 
 jobs:
   discover:
+    name: Discover changed packages
     uses: ./.github/workflows/_discover-changed-packages.yaml
 
   release:
