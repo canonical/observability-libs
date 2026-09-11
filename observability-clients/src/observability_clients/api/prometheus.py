@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import requests
+
 from observability_clients.api._base import BaseClient
 
 
@@ -50,7 +52,11 @@ class Prometheus(BaseClient):
 
     def is_ready(self, path: str = "/-/ready") -> bool:
         """Check whether Prometheus is ready."""
-        return super().is_ready(path=path)
+        try:
+            resp = self.session.get(f"{self.url}{path}")
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        return resp.status_code == 200
 
     def has_metric(self, name: str | None = None, labels: dict[str, str] | None = None) -> bool:
         """Check whether a metric with the given name and/or labels has data.

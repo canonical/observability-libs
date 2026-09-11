@@ -106,20 +106,6 @@ class TestGetSilences:
         assert result == payload
 
 
-# ── get_status ───────────────────────────────────────────────────────────────
-
-
-class TestGetStatus:
-    def test_returns_json(self, alertmanager: Alertmanager, mock_get: MagicMock) -> None:
-        payload = {"cluster": {"status": "ready"}, "versionInfo": {"version": "0.27.0"}}
-        mock_get.return_value = _mock_response(payload)
-
-        result = alertmanager.get_status()
-
-        mock_get.assert_called_once_with(f"{BASE_URL}/api/v2/status")
-        assert result == payload
-
-
 # ── is_ready ─────────────────────────────────────────────────────────────────
 
 

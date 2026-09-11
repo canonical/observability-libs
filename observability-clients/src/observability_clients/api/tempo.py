@@ -64,6 +64,14 @@ class Tempo(BaseClient):
 
     # --- Check methods (public, return bool) ---
 
+    def is_ready(self, path: str = "/ready") -> bool:
+        """Check whether Tempo is ready."""
+        try:
+            resp = self.session.get(f"{self.url}{path}")
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        return resp.status_code == 200
+
     def has_trace(self, trace_id: str) -> bool:
         """Check whether a trace with the given ID exists."""
         try:

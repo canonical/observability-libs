@@ -110,6 +110,9 @@ scan:
 # ============================================================================
 # Version & Release
 # ============================================================================
+# Releases are driven by the version in pyproject.toml: bump it (see `bump`
+# below), merge to `main`, and the release workflow will detect the new
+# version, tag it, create a GitHub Release, and publish to PyPI automatically.
 
 # Bump the version in pyproject.toml
 [group("release")]
@@ -118,7 +121,7 @@ bump level:
     #!/usr/bin/env bash
     uv version --bump={{level}}
 
-# Publish to PyPI (requires authentication)
+# Publish to PyPI (used by CI; requires authentication)
 [group("release")]
 [arg("test", long="test", value="false", help="Publish to TestPyPI")]
 publish test: build
@@ -127,29 +130,4 @@ publish test: build
         uv publish --index testpypi
     else
         uv publish
-    fi
-
-# Create a GitHub release (which will trigger a PyPi release)
-[group("release")]
-release:
-    #!/usr/bin/env bash
-    package="$(basename "$(pwd)")"
-    latest_release="$(gh release list --limit=1000 --order=desc --json=tagName | jq -r '[.[] | select(.tagName | startswith("'"${package}"'/v"))][0].tagName // ""')"
-    echo "Latest release for ${package} on GitHub is ${latest_release:-<none>}"
-    pyproject_release="$(yq -oy .project.version pyproject.toml)"
-    tag="${package}/v${pyproject_release}"
-    echo "Current version in pyproject.toml is ${tag}"
-    if [[ "${latest_release}" == "${tag}" ]] ; then
-        echo "Error: Latest release version matches pyproject.toml version. Bump the version first by using 'just bump'."
-        exit 1
-    fi
-    read -p "Proceed releasing ${tag}? (y/n): " answer
-    if [[ ! "$answer" == [Yy] ]] ; then
-        echo "Cancelled."
-        exit 1
-    fi
-    if [[ -n "${latest_release}" ]]; then
-        gh release create "${tag}" --generate-notes --notes-start-tag="${latest_release}" --title "${tag}"
-    else
-        gh release create "${tag}" --generate-notes --title "${tag}"
     fi

@@ -54,11 +54,3 @@ class BaseClient:
     def _post(self, path: str, **kwargs: Any) -> requests.Response:
         """Send a POST request to ``path``, retrying on connection errors/timeouts."""
         return self._retrying()(self.session.post)(f"{self.url}{path}", **kwargs)
-
-    def is_ready(self, path: str = "/ready") -> bool:
-        """Check whether the component is ready."""
-        try:
-            resp = self.session.get(f"{self.url}{path}")
-        except (requests.ConnectionError, requests.Timeout):
-            return False
-        return resp.status_code == 200

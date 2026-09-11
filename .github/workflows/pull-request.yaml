@@ -1,12 +1,13 @@
-name: Release
+name: Pull Request
 
 on:
+  pull_request:
   push:
     branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   discover:
@@ -53,8 +54,8 @@ jobs:
           packages="$(printf '%s\n' "${changed[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
           echo "packages=${packages}" >> "$GITHUB_OUTPUT"
 
-  release:
-    name: Release ${{ matrix.package }}
+  check:
+    name: Check (${{ matrix.package }})
     needs: discover
     if: ${{ needs.discover.outputs.packages != '[]' }}
     strategy:
@@ -62,51 +63,15 @@ jobs:
       matrix:
         package: ${{ fromJson(needs.discover.outputs.packages) }}
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      contents: write
-      id-token: write
     defaults:
       run:
         working-directory: ${{ matrix.package }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - name: Install dependencies
         run: |
           sudo snap install astral-uv --classic
           sudo snap install just --classic
-
-      - name: Check whether the version was bumped
-        id: version
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PACKAGE: ${{ matrix.package }}
-        run: |
-          version="$(uv run python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
-          tag="${PACKAGE}-v${version}"
-          if git rev-parse "refs/tags/${tag}" >/dev/null 2>&1 || \
-             gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
-            echo "Tag ${tag} already exists, skipping release."
-            echo "release=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "New version detected: ${tag}"
-            echo "release=true" >> "$GITHUB_OUTPUT"
-            echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create GitHub release
-        if: steps.version.outputs.release == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          gh release create "$TAG" --generate-notes --title "$TAG"
-
-      - name: Publish to PyPI
-        if: steps.version.outputs.release == 'true'
-        run: just publish
+      - name: Check
+        run: just check

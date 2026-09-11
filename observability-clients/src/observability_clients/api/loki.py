@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+import requests
+
 from observability_clients.api._base import BaseClient
 
 
@@ -56,6 +58,14 @@ class Loki(BaseClient):
         return resp.json()
 
     # --- Check methods (public, return bool) ---
+
+    def is_ready(self, path: str = "/ready") -> bool:
+        """Check whether Loki is ready."""
+        try:
+            resp = self.session.get(f"{self.url}{path}")
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        return resp.status_code == 200
 
     def has_log_line(self, query: str, pattern: str | None = None) -> bool:
         """Check whether any log lines match the LogQL query.

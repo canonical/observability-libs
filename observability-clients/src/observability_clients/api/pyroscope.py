@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import requests
+
 from observability_clients.api._base import BaseClient
 
 
@@ -67,6 +69,14 @@ class Pyroscope(BaseClient):
         return resp.json()
 
     # --- Check methods (public, return bool) ---
+
+    def is_ready(self, path: str = "/ready") -> bool:
+        """Check whether Pyroscope is ready."""
+        try:
+            resp = self.session.get(f"{self.url}{path}")
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        return resp.status_code == 200
 
     def has_profile(self, query: str) -> bool:
         """Check whether profile data exists for the given query."""

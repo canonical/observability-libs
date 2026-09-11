@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+import requests
+
 from observability_clients.api._base import BaseClient
 
 
@@ -40,7 +42,11 @@ class Alertmanager(BaseClient):
 
     def is_ready(self, path: str = "/-/ready") -> bool:
         """Check whether Alertmanager is ready."""
-        return super().is_ready(path=path)
+        try:
+            resp = self.session.get(f"{self.url}{path}")
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        return resp.status_code == 200
 
     def has_silence(
         self,
