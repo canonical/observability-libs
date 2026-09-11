@@ -9,7 +9,7 @@ on:
 
 jobs:
   discover:
-    name: Discover changed packages
+    name: Filter changed packages
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.filter.outputs.packages }}
