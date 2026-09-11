@@ -88,14 +88,6 @@ clean:
 # Maintenance
 # ============================================================================
 
-# Update this justfile from the blueprint repository
-[group("maintenance")]
-[confirm("Fetch the justfile from *lucabello/blueprints* ? (y/n):")]
-@refresh:
-    echo "Fetching latest justfile from blueprints repository..."
-    gh api repos/lucabello/blueprints/contents/blueprints/python/justfile --jq '.content' | base64 --decode > justfile
-    echo "✓ justfile updated"
-
 # Update uv.lock dependencies
 [group("maintenance")]
 lock:
@@ -105,7 +97,7 @@ lock:
 [group("maintenance")]
 scan:
     @echo "Scanning for security vulnerabilities..."
-    uv run uv-secure
+    uv audit
 
 # ============================================================================
 # Version & Release
@@ -123,11 +115,6 @@ bump level:
 
 # Publish to PyPI (used by CI; requires authentication)
 [group("release")]
-[arg("test", long="test", value="false", help="Publish to TestPyPI")]
-publish test: build
+publish: build
     #!/usr/bin/env bash
-    if [ "{{test}}" = "true" ]; then
-        uv publish --index testpypi
-    else
-        uv publish
-    fi
+    uv publish

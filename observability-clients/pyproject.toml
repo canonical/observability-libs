@@ -23,7 +23,6 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-sugar>=1.1.1",
     "actionlint-py>=1.7.10.24",
-    "uv-secure>=0.15.4",
     "types-requests>=2.32.0",
 ]
 
