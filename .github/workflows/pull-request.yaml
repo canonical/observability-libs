@@ -11,48 +11,7 @@ concurrency:
 
 jobs:
   discover:
-    name: Discover changed packages
-    runs-on: ubuntu-latest
-    outputs:
-      packages: ${{ steps.filter.outputs.packages }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: List all packages
-        id: list
-        run: |
-          packages="$(find . -mindepth 2 -maxdepth 2 -name justfile -printf '%h\n' | sed 's|^\./||' | sort)"
-          {
-            echo "packages<<EOF"
-            echo "$packages"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Determine changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v47
-
-      - name: Filter to packages with changes
-        id: filter
-        env:
-          ALL_PACKAGES: ${{ steps.list.outputs.packages }}
-          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-        run: |
-          changed=()
-          while IFS= read -r package; do
-            [[ -z "$package" ]] && continue
-            for file in $CHANGED_FILES; do
-              if [[ "$file" == "$package/"* ]]; then
-                changed+=("$package")
-                break
-              fi
-            done
-          done <<< "$ALL_PACKAGES"
-          packages="$(printf '%s\n' "${changed[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
-          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/_discover-changed-packages.yaml
 
   check:
     name: Check (${{ matrix.package }})

@@ -152,6 +152,22 @@ class TestGetDatasourceByName:
             grafana.get_datasource_by_name("nope")
 
 
+class TestGetDatasourceHealth:
+    def test_success(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _ok_response({"status": "OK", "message": "all good"})
+
+        result = grafana.get_datasource_health("abc123")
+
+        mock_get.assert_called_once_with("http://grafana:3000/api/datasources/uid/abc123/health")
+        assert result == {"status": "OK", "message": "all good"}
+
+    def test_raises_on_http_error(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _http_error_response(404)
+
+        with pytest.raises(requests.HTTPError):
+            grafana.get_datasource_health("missing")
+
+
 class TestGetAlertRules:
     def test_success(self, grafana: Grafana, mock_get: MagicMock) -> None:
         payload = {"ns": [{"name": "grp", "rules": []}]}
@@ -272,6 +288,47 @@ class TestHasDatasource:
     def test_no_args_raises(self, grafana: Grafana, mock_get: MagicMock) -> None:
         with pytest.raises(ValueError, match="At least one of"):
             grafana.has_datasource()
+
+
+class TestIsDatasourceHealthy:
+    def test_by_uid_healthy(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _ok_response({"status": "OK", "message": "all good"})
+
+        assert grafana.is_datasource_healthy(uid="abc123") is True
+        mock_get.assert_called_once_with("http://grafana:3000/api/datasources/uid/abc123/health")
+
+    def test_by_uid_unhealthy(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _ok_response({"status": "ERROR", "message": "unreachable"})
+
+        assert grafana.is_datasource_healthy(uid="abc123") is False
+
+    def test_by_uid_http_error(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _http_error_response(404)
+
+        assert grafana.is_datasource_healthy(uid="missing") is False
+
+    def test_by_name_resolves_uid(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.side_effect = [
+            _ok_response({"name": "Loki", "uid": "loki-uid"}),
+            _ok_response({"status": "OK", "message": "all good"}),
+        ]
+
+        assert grafana.is_datasource_healthy(name="Loki") is True
+        assert mock_get.call_args_list[0].args[0] == (
+            "http://grafana:3000/api/datasources/name/Loki"
+        )
+        assert mock_get.call_args_list[1].args[0] == (
+            "http://grafana:3000/api/datasources/uid/loki-uid/health"
+        )
+
+    def test_by_name_not_found(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _http_error_response(404)
+
+        assert grafana.is_datasource_healthy(name="nope") is False
+
+    def test_no_args_raises(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        with pytest.raises(ValueError, match="At least one of"):
+            grafana.is_datasource_healthy()
 
 
 class TestHasAlertRule:

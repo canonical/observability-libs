@@ -42,6 +42,16 @@ class Grafana(BaseClient):
         resp.raise_for_status()
         return resp.json()
 
+    def get_datasource_health(self, uid: str) -> dict:
+        """Check the health of a datasource by UID, regardless of its type.
+
+        Relies on the datasource plugin's ``CheckHealth`` implementation, so the
+        response is uniform across datasource types (Prometheus, Loki, Tempo, etc.).
+        """
+        resp = self._get(f"/api/datasources/uid/{uid}/health")
+        resp.raise_for_status()
+        return resp.json()
+
     def get_alert_rules(self) -> dict:
         """Fetch all Grafana-managed alert rules."""
         resp = self._get("/api/ruler/grafana/api/v1/rules")
@@ -99,6 +109,28 @@ class Grafana(BaseClient):
                 continue
             return True
         return False
+
+    def is_datasource_healthy(self, name: str | None = None, uid: str | None = None) -> bool:
+        """Check whether a datasource is healthy, regardless of its type.
+
+        At least one of ``name`` or ``uid`` must be provided. If only ``name``
+        is given, the datasource's UID is looked up first.
+        """
+        if not name and not uid:
+            raise ValueError("At least one of 'name' or 'uid' must be provided.")
+        if not uid:
+            assert name is not None
+            try:
+                uid = self.get_datasource_by_name(name).get("uid")
+            except requests.HTTPError:
+                return False
+        if not uid:
+            return False
+        try:
+            health = self.get_datasource_health(uid)
+        except requests.HTTPError:
+            return False
+        return health.get("status") == "OK"
 
     def has_alert_rule(self, name: str, group: str | None = None) -> bool:
         """Check whether a Grafana-managed alert rule with the given name exists."""
