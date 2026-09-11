@@ -326,6 +326,11 @@ class TestIsDatasourceHealthy:
 
         assert grafana.is_datasource_healthy(name="nope") is False
 
+    def test_by_name_no_uid(self, grafana: Grafana, mock_get: MagicMock) -> None:
+        mock_get.return_value = _ok_response({"name": "Loki"})
+
+        assert grafana.is_datasource_healthy(name="Loki") is False
+
     def test_no_args_raises(self, grafana: Grafana, mock_get: MagicMock) -> None:
         with pytest.raises(ValueError, match="At least one of"):
             grafana.is_datasource_healthy()

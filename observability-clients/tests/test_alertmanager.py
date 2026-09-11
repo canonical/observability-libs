@@ -226,6 +226,17 @@ class TestHasSilence:
         )
         assert alertmanager.has_silence() is True
 
+    def test_skips_non_matching_comment(
+        self, alertmanager: Alertmanager, mock_get: MagicMock
+    ) -> None:
+        mock_get.return_value = _mock_response(
+            [
+                {"comment": "other", "matchers": [], "status": {"state": "active"}},
+                {"comment": "target", "matchers": [], "status": {"state": "active"}},
+            ]
+        )
+        assert alertmanager.has_silence(comment="target") is True
+
 
 # ── is_silenced ──────────────────────────────────────────────────────────────
 
@@ -268,3 +279,17 @@ class TestIsSilenced:
         )
         assert alertmanager.has_silenced_alert("HighCPU", labels={"env": "prod"}) is True
         assert alertmanager.has_silenced_alert("HighCPU", labels={"env": "staging"}) is False
+
+    def test_skips_non_matching_name(
+        self, alertmanager: Alertmanager, mock_get: MagicMock
+    ) -> None:
+        mock_get.return_value = _mock_response(
+            [
+                {"labels": {"alertname": "Other"}, "status": {"silencedBy": ["abc"]}},
+                {
+                    "labels": {"alertname": "HighCPU"},
+                    "status": {"silencedBy": ["abc123"]},
+                },
+            ]
+        )
+        assert alertmanager.has_silenced_alert("HighCPU") is True

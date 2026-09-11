@@ -309,3 +309,27 @@ class TestHasLabelValue:
     def test_non_list_response(self, pyroscope: Pyroscope):
         pyroscope.session.get.return_value = _mock_response({"error": "unexpected"})
         assert pyroscope.has_label_value("service_name", "myapp") is False
+
+
+# ---------------------------------------------------------------------------
+# Check methods – is_ready
+# ---------------------------------------------------------------------------
+
+
+class TestIsReady:
+    def test_ready(self, pyroscope: Pyroscope):
+        pyroscope.session.get.return_value = _mock_response({}, status_code=200)
+        assert pyroscope.is_ready() is True
+        pyroscope.session.get.assert_called_once_with(f"{BASE_URL}/ready")
+
+    def test_not_ready(self, pyroscope: Pyroscope):
+        pyroscope.session.get.return_value = _mock_response({}, status_code=503)
+        assert pyroscope.is_ready() is False
+
+    def test_connection_error(self, pyroscope: Pyroscope):
+        pyroscope.session.get.side_effect = requests.ConnectionError("connection refused")
+        assert pyroscope.is_ready() is False
+
+    def test_timeout(self, pyroscope: Pyroscope):
+        pyroscope.session.get.side_effect = requests.Timeout("timed out")
+        assert pyroscope.is_ready() is False
