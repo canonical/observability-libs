@@ -149,13 +149,13 @@ from observability_clients import Pyroscope
 pyroscope = Pyroscope(url="http://localhost:4040")
 
 # HTTP methods
-flamegraph = pyroscope.render("process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name=\"myapp\"}")
+flamegraph = pyroscope.render('process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="myapp"}')
 profile_types = pyroscope.get_profile_types()
 labels = pyroscope.get_labels()
 values = pyroscope.get_label_values("service_name")
 
 # Check methods
-pyroscope.has_profile("process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name=\"myapp\"}")
+pyroscope.has_profile('process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="myapp"}')
 pyroscope.has_profile_type("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
 pyroscope.has_label("service_name")
 pyroscope.has_label_value("service_name", "myapp")

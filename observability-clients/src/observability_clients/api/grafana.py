@@ -136,7 +136,7 @@ class Grafana(BaseClient):
         """Check whether a Grafana-managed alert rule with the given name exists."""
         data = self.get_alert_rules()
         # Response is keyed by namespace (folder), each containing a list of rule groups.
-        for _namespace, rule_groups in data.items():
+        for rule_groups in data.values():
             if not isinstance(rule_groups, list):
                 continue
             for rule_group in rule_groups:

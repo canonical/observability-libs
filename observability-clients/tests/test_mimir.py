@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from unittest.mock import MagicMock
 
 import pytest
@@ -276,7 +277,7 @@ class TestHasAlertRule:
 
 
 class TestHasAlertRules:
-    _rules_payload = {
+    _rules_payload: typing.ClassVar = {
         "data": {
             "groups": [
                 {
