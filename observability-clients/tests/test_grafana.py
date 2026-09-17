@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from unittest.mock import MagicMock
 
 import pytest
@@ -337,7 +338,7 @@ class TestIsDatasourceHealthy:
 
 
 class TestHasAlertRule:
-    _ALERT_DATA = {
+    _ALERT_DATA: typing.ClassVar = {
         "namespace-1": [
             {
                 "name": "group-a",

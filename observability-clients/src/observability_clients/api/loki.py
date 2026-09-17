@@ -101,7 +101,7 @@ class Loki(BaseClient):
         # Loki rules response can be either Prometheus-style or grouped by namespace.
         groups = data.get("data", {}).get("groups", [])
         if not groups:
-            for _ns, ns_groups in data.get("data", {}).items():
+            for ns_groups in data.get("data", {}).values():
                 if isinstance(ns_groups, list):
                     groups.extend(ns_groups)
         for rule_group in groups:
@@ -117,7 +117,7 @@ class Loki(BaseClient):
         data = self.get_rules()
         groups: list = data.get("data", {}).get("groups", [])
         if not groups:
-            for _ns, ns_groups in data.get("data", {}).items():
+            for ns_groups in data.get("data", {}).values():
                 if isinstance(ns_groups, list):
                     groups.extend(ns_groups)
         for rule_group in groups:

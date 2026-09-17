@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from unittest.mock import MagicMock
 
 import pytest
@@ -237,7 +238,7 @@ class TestHasProfile:
 
 
 class TestHasProfileType:
-    _profile_types_payload = {
+    _profile_types_payload: typing.ClassVar = {
         "profileTypes": [
             {"id": "process_cpu:cpu:nanoseconds:cpu:nanoseconds", "name": "cpu"},
             {"id": "memory:alloc_objects:count:space:bytes", "name": "memory"},

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from unittest.mock import MagicMock
 
 import pytest
@@ -232,7 +233,7 @@ class TestHasMetric:
 
 
 class TestHasAlertRule:
-    _rules_payload = {
+    _rules_payload: typing.ClassVar = {
         "data": {
             "groups": [
                 {
@@ -289,7 +290,7 @@ class TestHasAlertRule:
 
 
 class TestHasAlertRules:
-    _rules_payload = {
+    _rules_payload: typing.ClassVar = {
         "data": {
             "groups": [
                 {
@@ -386,7 +387,7 @@ class TestHasAlertRules:
 
 
 class TestHasActiveAlert:
-    _alerts_payload = {
+    _alerts_payload: typing.ClassVar = {
         "data": {
             "alerts": [
                 {
@@ -452,7 +453,7 @@ class TestHasActiveAlert:
 
 
 class TestHasTarget:
-    _targets_payload = {
+    _targets_payload: typing.ClassVar = {
         "data": {
             "activeTargets": [
                 {
