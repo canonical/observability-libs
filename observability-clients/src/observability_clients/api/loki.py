@@ -72,7 +72,7 @@ class Loki(BaseClient):
 
         If ``pattern`` is provided, at least one returned log line must contain it.
         """
-        result = self.query(query)
+        result = self.query_range(query)
         entries = result.get("data", {}).get("result", [])
         if not entries:
             return False

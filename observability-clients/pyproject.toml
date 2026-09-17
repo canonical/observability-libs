@@ -1,6 +1,6 @@
 [project]
 name = "observability-clients"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Python library of HTTP API clients for common Observability stack workloads."
 authors = [
     {name = "Luca Bello", email = "luca.bello@canonical.com"},
